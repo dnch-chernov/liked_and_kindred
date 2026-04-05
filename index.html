@@ -370,6 +370,28 @@ input[type="text"]:focus { border-color: var(--accent); }
 .radio-row { display: flex; gap: 16px; }
 .radio-row label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; font-weight: 400; }
 
+/* Energy bar (flow visualisation) */
+.track-energy {
+  flex-shrink: 0;
+  width: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-end;
+}
+.track-energy-bar {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface2);
+  overflow: hidden;
+}
+.track-energy-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+.track-energy-label { font-size: 10px; color: var(--text2); line-height: 1; }
+
 /* Spinner */
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinner {
@@ -419,6 +441,10 @@ const K = {
   HIST_DAYS      : 'lk_hist_days',    // no-repeat window, default 30
   PL_REUSE       : 'lk_pl_reuse',     // 'reuse'|'create', default 'reuse'
   REGION_ONLY    : 'lk_region_only',  // only include region-available tracks
+  // Flow & ordering
+  FLOW_CURVE     : 'lk_flow_curve',   // 'off'|'smooth'|'arc'|'build'|'descent', default 'arc'
+  FLOW_KEY       : 'lk_flow_key',     // 'true'|'false', default 'true'
+  FLOW_TEMPO     : 'lk_flow_tempo',   // 'true'|'false', default 'true'
 };
 
 // ── App state ─────────────────────────────────────────────────────────────────
@@ -464,6 +490,14 @@ function getGenSettings() {
     histDays    : parseInt(localStorage.getItem(K.HIST_DAYS)   || '30'),
     playlistReuse: (localStorage.getItem(K.PL_REUSE) || 'reuse') === 'reuse',
     regionOnly  : localStorage.getItem(K.REGION_ONLY) === 'true',
+  };
+}
+
+function getFlowSettings() {
+  return {
+    curve   : localStorage.getItem(K.FLOW_CURVE)  || 'arc',
+    useKey  : localStorage.getItem(K.FLOW_KEY)    !== 'false',
+    useTempo: localStorage.getItem(K.FLOW_TEMPO)  !== 'false',
   };
 }
 
@@ -758,6 +792,125 @@ async function syncLibrary(log) {
   return { artists, genreIndex };
 }
 
+// ── Flow engine ───────────────────────────────────────────────────────────────
+
+// Camelot Wheel: CAMELOT[key][mode] → { num: 1-12, l: 'A'|'B' }
+// Spotify key: 0=C 1=C# 2=D 3=D# 4=E 5=F 6=F# 7=G 8=G# 9=A 10=A# 11=B
+// mode: 0=minor(A)  1=major(B)
+const CAMELOT = [
+  [{num:5,l:'A'},{num:8,l:'B'}],   // C
+  [{num:12,l:'A'},{num:3,l:'B'}],  // C#/Db
+  [{num:7,l:'A'},{num:10,l:'B'}],  // D
+  [{num:2,l:'A'},{num:5,l:'B'}],   // D#/Eb
+  [{num:9,l:'A'},{num:12,l:'B'}],  // E
+  [{num:4,l:'A'},{num:7,l:'B'}],   // F
+  [{num:11,l:'A'},{num:2,l:'B'}],  // F#/Gb
+  [{num:6,l:'A'},{num:9,l:'B'}],   // G
+  [{num:1,l:'A'},{num:4,l:'B'}],   // G#/Ab
+  [{num:8,l:'A'},{num:11,l:'B'}],  // A
+  [{num:3,l:'A'},{num:6,l:'B'}],   // A#/Bb
+  [{num:10,l:'A'},{num:1,l:'B'}],  // B
+];
+
+function camelotDistance(fa, fb) {
+  // Returns 0 (compatible), 0.15 (adjacent), or 0.35 (clash)
+  if (fa.key < 0 || fb.key < 0) return 0; // unknown key → no penalty
+  const a = CAMELOT[fa.key][fa.mode];
+  const b = CAMELOT[fb.key][fb.mode];
+  if (a.num === b.num) return 0;           // same num, same or parallel → perfect
+  const diff = Math.min(Math.abs(a.num - b.num), 12 - Math.abs(a.num - b.num));
+  if (diff === 1) return 0.15;             // adjacent on wheel → good
+  if (diff === 2) return 0.25;
+  return 0.35;                             // everything else → penalise
+}
+
+async function fetchAudioFeatures(ids) {
+  // ids: array of track IDs (up to 100 per call)
+  const featureMap = {};
+  for (let i = 0; i < ids.length; i += 100) {
+    const chunk = ids.slice(i, i + 100);
+    try {
+      const res = await api.get(`/audio-features?ids=${chunk.join(',')}`);
+      for (const f of (res.audio_features || [])) {
+        if (f?.id) featureMap[f.id] = f;
+      }
+    } catch (e) {
+      console.warn('audio-features fetch failed:', e.message);
+    }
+  }
+  return featureMap;
+}
+
+// Returns an array of n target energy values for the chosen curve shape.
+// Returns null entries for 'smooth' (no energy constraint, pure transition scoring).
+function getEnergyTargets(n, curve) {
+  return Array.from({ length: n }, (_, i) => {
+    const t = n > 1 ? i / (n - 1) : 0;
+    if (curve === 'arc') {
+      const peak = 0.62;
+      return t <= peak
+        ? 0.38 + (0.86 - 0.38) * (t / peak)
+        : 0.86 - (0.86 - 0.42) * ((t - peak) / (1 - peak));
+    }
+    if (curve === 'build')   return 0.30 + 0.62 * t;
+    if (curve === 'descent') return 0.88 - 0.54 * t;
+    return null; // 'smooth' or 'off' — no energy constraint
+  });
+}
+
+// Greedy nearest-neighbour ordering.
+// At each position, picks the unplaced track with the lowest combined score of:
+//   • how well its energy fits the target arc
+//   • how smoothly it transitions from the previous track (ΔE, Δvalence, ΔBPM, key compat)
+function orderByFlow(tracks, featureMap, flowSettings) {
+  const { curve, useKey, useTempo } = flowSettings;
+  const n = tracks.length;
+  if (n <= 1) return tracks;
+
+  const neutral = { energy: 0.5, valence: 0.5, tempo: 120, key: -1, mode: 1 };
+  const withF = tracks.map(t => ({ ...t, _f: featureMap[t.id] || neutral }));
+  const targets = getEnergyTargets(n, curve);
+  const remaining = new Set(withF.map((_, i) => i));
+  const result = [];
+
+  // Opener: track whose energy is closest to targets[0] (or median for smooth)
+  const t0 = targets[0];
+  const startIdx = [...remaining].reduce((best, i) => {
+    const dBest = t0 !== null ? Math.abs(withF[best]._f.energy - t0) : Math.abs(withF[best]._f.energy - 0.5);
+    const dCurr = t0 !== null ? Math.abs(withF[i]._f.energy    - t0) : Math.abs(withF[i]._f.energy    - 0.5);
+    return dCurr < dBest ? i : best;
+  }, [...remaining][0]);
+
+  result.push(withF[startIdx]);
+  remaining.delete(startIdx);
+
+  for (let pos = 1; pos < n; pos++) {
+    const prev   = result[pos - 1]._f;
+    const target = targets[pos];
+
+    let bestIdx = null, bestScore = Infinity;
+    for (const i of remaining) {
+      const f = withF[i]._f;
+
+      const energyFit    = target !== null ? Math.abs(f.energy  - target) : 0;
+      const deltaEnergy  = Math.abs(f.energy  - prev.energy);
+      const deltaValence = Math.abs(f.valence  - prev.valence);
+      const deltaTempo   = useTempo ? Math.abs(f.tempo - prev.tempo) / 80 : 0; // 80 BPM diff → 1.0
+      const keyPenalty   = useKey   ? camelotDistance(prev, f) : 0;
+
+      const transScore = deltaEnergy * 0.45 + deltaValence * 0.30 + deltaTempo * 0.15 + keyPenalty * 0.40;
+      const score      = curve !== 'smooth' ? energyFit * 1.0 + transScore * 0.45 : transScore;
+
+      if (score < bestScore) { bestScore = score; bestIdx = i; }
+    }
+
+    result.push(withF[bestIdx]);
+    remaining.delete(bestIdx);
+  }
+
+  return result;
+}
+
 // ── Playlist generation ───────────────────────────────────────────────────────
 function pickGenre(genreIndex) {
   const genres  = Object.keys(genreIndex);
@@ -918,10 +1071,24 @@ async function generatePlaylist(log, opts = {}) {
   }
 
   // Interleave liked / new
-  const playlist = [];
+  let playlist = [];
   for (let i = 0; i < Math.max(liked.length, newTracks.length); i++) {
     if (i < liked.length)     playlist.push({ ...liked[i],     _type: 'liked' });
     if (i < newTracks.length) playlist.push({ ...newTracks[i], _type: 'new'   });
+  }
+
+  // Flow ordering
+  const flow = getFlowSettings();
+  let featureMap = {};
+  if (flow.curve !== 'off') {
+    log(`🌊 Fetching audio features for flow ordering …`, 'info');
+    featureMap = await fetchAudioFeatures(playlist.map(t => t.id));
+    const fetched = Object.keys(featureMap).length;
+    log(`  Got features for ${fetched} / ${playlist.length} tracks`, 'dim');
+    if (fetched > 0) {
+      playlist = orderByFlow(playlist, featureMap, flow);
+      log(`  Ordered with curve: ${flow.curve}${flow.useKey ? ' · key compat' : ''}${flow.useTempo ? ' · tempo' : ''}`, 'dim');
+    }
   }
 
   // Create a new playlist or clear and reuse the existing one
@@ -953,7 +1120,7 @@ async function generatePlaylist(log, opts = {}) {
   const check = await api.get(`/playlists/${pid}?fields=tracks(total),name`);
   log(`✓ "${check.name}" — ${check.tracks.total} tracks on Spotify`, 'success');
 
-  return { genre, label, playlist, playlistId: pid };
+  return { genre, label, playlist, playlistId: pid, featureMap };
 }
 
 // ── DOM helpers ───────────────────────────────────────────────────────────────
@@ -1195,16 +1362,30 @@ function renderGenerateTab() {
     lastResult ? el('div', { class: 'card' },
       el('p', { class: 'card-title' }, `Result — ${lastResult.label || lastResult.genre}`),
       el('div', {},
-        ...lastResult.playlist.map((t, i) =>
-          el('div', { class: 'track-item' },
+        ...lastResult.playlist.map((t, i) => {
+          const f = lastResult.featureMap?.[t.id];
+          let energyEl = null;
+          if (f) {
+            const pct   = Math.round(f.energy * 100);
+            // Hue: 160 (green/cool) → 30 (warm/orange) as energy rises
+            const hue   = Math.round(160 - f.energy * 130);
+            const fill  = el('div', { class: 'track-energy-fill',
+              style: `width:${pct}%;background:hsl(${hue},65%,48%)` });
+            energyEl = el('div', { class: 'track-energy', title: `Energy ${pct}%  Valence ${Math.round(f.valence*100)}%  ${Math.round(f.tempo)} BPM` },
+              el('div', { class: 'track-energy-bar' }, fill),
+              el('span', { class: 'track-energy-label' }, `${pct}%`),
+            );
+          }
+          return el('div', { class: 'track-item' },
             el('span', { class: 'track-num' }, String(i + 1)),
             el('span', { class: 'track-sym' }, t._type === 'liked' ? '♥' : '✨'),
             el('div', { class: 'track-info' },
               el('div', { class: 'track-name'   }, t.name),
               el('div', { class: 'track-artist' }, t.artists[0]?.name || ''),
-            )
-          )
-        )
+            ),
+            energyEl,
+          );
+        })
       )
     ) : null,
   );
@@ -1358,6 +1539,57 @@ function renderSettingsTab() {
     el('div', { class: 'setting-row', style: 'display:block;padding:12px 0' },
       el('label', {}, 'Playlist mode'),
       el('div', { class: 'radio-row', style: 'margin-top:8px' }, reuseRadio, createRadio),
+    ),
+
+    el('div', { class: 'divider' }),
+    el('p', { class: 'section-label' }, 'Flow & Ordering'),
+
+    el('div', { class: 'setting-row', style: 'display:block;padding:12px 0' },
+      el('div', {},
+        el('label', {}, 'Energy curve'),
+        el('div', { class: 'sub-label' }, 'Shape of the energy arc across the playlist'),
+      ),
+      el('div', { class: 'mode-toggle', style: 'margin-top:8px;margin-bottom:0' },
+        ...['off','smooth','arc','build','descent'].map(val => {
+          const labels = { off:'Off', smooth:'Smooth', arc:'Arc ↑↓', build:'Build ↑', descent:'Descend ↓' };
+          const btn = el('button', { class: `mode-btn${(localStorage.getItem(K.FLOW_CURVE)||'arc')===val?' active':''}` }, labels[val]);
+          btn.addEventListener('click', () => {
+            btn.closest('.mode-toggle').querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            localStorage.setItem(K.FLOW_CURVE, val);
+          });
+          return btn;
+        })
+      ),
+      el('div', { class: 'sm', style: 'margin-top:6px;color:var(--text2)' },
+        'Off = random order · Smooth = minimize transitions · Arc/Build/Descent = energy curve shapes'
+      ),
+    ),
+
+    el('div', { class: 'setting-row' },
+      el('div', {},
+        el('label', {}, 'Key compatibility (Camelot Wheel)'),
+        el('div', { class: 'sub-label' }, 'Prefer tracks in harmonically compatible keys'),
+      ),
+      (() => {
+        const chk = el('input', { type: 'checkbox' });
+        chk.checked = localStorage.getItem(K.FLOW_KEY) !== 'false';
+        chk.addEventListener('change', () => localStorage.setItem(K.FLOW_KEY, chk.checked));
+        return el('label', {}, chk, ' Enable');
+      })(),
+    ),
+
+    el('div', { class: 'setting-row' },
+      el('div', {},
+        el('label', {}, 'Tempo similarity'),
+        el('div', { class: 'sub-label' }, 'Avoid large BPM jumps between consecutive tracks'),
+      ),
+      (() => {
+        const chk = el('input', { type: 'checkbox' });
+        chk.checked = localStorage.getItem(K.FLOW_TEMPO) !== 'false';
+        chk.addEventListener('change', () => localStorage.setItem(K.FLOW_TEMPO, chk.checked));
+        return el('label', {}, chk, ' Enable');
+      })(),
     ),
 
     el('button', { class: 'btn-primary', style: 'margin-top:4px', onClick: () => {

@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liked &amp; Kindred</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Themes ────────────────────────────────────────────────────────────────── */
+:root {
+  --bg:          #f4f4f5;
+  --surface:     #ffffff;
+  --surface2:    #f0f0f1;
+  --border:      #e4e4e7;
+  --text:        #18181b;
+  --text2:       #71717a;
+  --accent:      #1db954;
+  --accent-h:    #17a349;
+  --danger:      #dc2626;
+  --radius:      8px;
+  --shadow:      0 1px 4px rgba(0,0,0,.08);
+  --font:        -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+[data-theme="dark"] {
+  --bg:       #09090b;
+  --surface:  #18181b;
+  --surface2: #27272a;
+  --border:   #3f3f46;
+  --text:     #fafafa;
+  --text2:    #a1a1aa;
+}
+
+/* ── Base ──────────────────────────────────────────────────────────────────── */
+html, body { height: 100%; }
+body {
+  font-family: var(--font);
+  background:  var(--bg);
+  color:       var(--text);
+  font-size:   14px;
+  line-height: 1.55;
+  transition:  background .2s, color .2s;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code {
+  font-size: 12px;
+  background: var(--surface2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  word-break: break-all;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────────── */
+button {
+  font-family: var(--font);
+  font-size:   14px;
+  cursor:      pointer;
+  border:      none;
+  border-radius: var(--radius);
+  padding:     9px 18px;
+  transition:  background .14s, opacity .14s;
+  line-height: 1.4;
+}
+button:disabled { opacity: .45; cursor: not-allowed; }
+
+.btn-primary  { background: var(--accent); color: #fff; font-weight: 600; }
+.btn-primary:hover:not(:disabled) { background: var(--accent-h); }
+
+.btn-secondary {
+  background: var(--surface2);
+  color:      var(--text);
+  border:     1px solid var(--border);
+}
+.btn-secondary:hover:not(:disabled) { background: var(--border); }
+
+.btn-ghost {
+  background: transparent;
+  color:      var(--text2);
+  padding:    7px 12px;
+  border:     1px solid var(--border);
+}
+.btn-ghost:hover { color: var(--text); background: var(--surface2); }
+
+.btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+.btn-danger:hover { background: var(--danger); color: #fff; }
+
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+
+/* ── Inputs ────────────────────────────────────────────────────────────────── */
+input[type="text"] {
+  font-family:  var(--font);
+  font-size:    14px;
+  padding:      9px 12px;
+  border:       1px solid var(--border);
+  border-radius: var(--radius);
+  background:   var(--surface);
+  color:        var(--text);
+  width:        100%;
+  outline:      none;
+  transition:   border-color .14s;
+}
+input[type="text"]:focus { border-color: var(--accent); }
+
+/* ── Layout ────────────────────────────────────────────────────────────────── */
+#app { min-height: 100vh; display: flex; flex-direction: column; }
+
+.header {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  padding:         12px 24px;
+  background:      var(--surface);
+  border-bottom:   1px solid var(--border);
+  position:        sticky;
+  top:             0;
+  z-index:         10;
+}
+.logo {
+  display:     flex;
+  align-items: center;
+  gap:         8px;
+  font-size:   15px;
+  font-weight: 700;
+  color:       var(--text);
+}
+.logo-dot { color: var(--accent); font-size: 18px; line-height: 1; }
+
+.header-right { display: flex; align-items: center; gap: 10px; }
+.user-chip { font-size: 12px; color: var(--text2); }
+
+/* ── Center screen (login / setup) ─────────────────────────────────────────── */
+.center-wrap {
+  flex: 1;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  padding:         40px 20px;
+}
+.setup-card {
+  background:    var(--surface);
+  border:        1px solid var(--border);
+  border-radius: 14px;
+  padding:       40px 36px;
+  width:         100%;
+  max-width:     420px;
+  box-shadow:    var(--shadow);
+}
+.setup-card h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.setup-card .sub { color: var(--text2); font-size: 13px; margin-bottom: 28px; }
+.field { margin-bottom: 16px; }
+.field label {
+  display:        block;
+  font-size:      11px;
+  font-weight:    700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color:          var(--text2);
+  margin-bottom:  6px;
+}
+.help { font-size: 12px; color: var(--text2); margin-top: 18px; line-height: 1.7; }
+
+/* ── Main app ──────────────────────────────────────────────────────────────── */
+.main { flex: 1; max-width: 800px; margin: 0 auto; padding: 28px 24px; width: 100%; }
+
+/* Tabs */
+.tabs {
+  display:       flex;
+  gap:           2px;
+  background:    var(--surface2);
+  border-radius: 10px;
+  padding:       4px;
+  margin-bottom: 24px;
+}
+.tab {
+  flex:          1;
+  padding:       8px 14px;
+  border-radius: 7px;
+  background:    transparent;
+  color:         var(--text2);
+  font-weight:   500;
+  font-size:     13px;
+  border:        none;
+}
+.tab:hover { color: var(--text); }
+.tab.active {
+  background:  var(--surface);
+  color:       var(--text);
+  font-weight: 600;
+  box-shadow:  var(--shadow);
+}
+
+/* Cards */
+.card {
+  background:    var(--surface);
+  border:        1px solid var(--border);
+  border-radius: var(--radius);
+  padding:       20px;
+  margin-bottom: 14px;
+}
+.card-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.card-desc  { color: var(--text2); font-size: 13px; margin-bottom: 16px; line-height: 1.6; }
+
+/* Status badges */
+.badge {
+  display:       inline-block;
+  font-size:     11px;
+  padding:       3px 9px;
+  border-radius: 20px;
+  font-weight:   600;
+}
+.badge-ok   { background: #dcfce7; color: #166534; }
+.badge-warn { background: #fef9c3; color: #854d0e; }
+[data-theme="dark"] .badge-ok   { background: #14532d; color: #86efac; }
+[data-theme="dark"] .badge-warn { background: #422006; color: #fcd34d; }
+
+/* Log */
+.log {
+  background:  var(--surface2);
+  border:      1px solid var(--border);
+  border-radius: var(--radius);
+  padding:     12px 14px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size:   12px;
+  max-height:  260px;
+  overflow-y:  auto;
+  margin-top:  14px;
+}
+.log-line      { padding: 1px 0; color: var(--text2); }
+.log-line.info    { color: var(--text); }
+.log-line.success { color: var(--accent); }
+.log-line.warn    { color: #ca8a04; }
+.log-line.error   { color: var(--danger); }
+.log-line.dim     { color: var(--text2); }
+
+/* Genre chips */
+.genre-grid {
+  display:               grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap:                   8px;
+  margin-top:            12px;
+}
+.genre-chip {
+  background:    var(--surface2);
+  border:        1px solid var(--border);
+  border-radius: 6px;
+  padding:       8px 12px;
+  display:       flex;
+  justify-content: space-between;
+  align-items:   center;
+  font-size:     13px;
+}
+.genre-chip .cnt {
+  background:    var(--accent);
+  color:         #fff;
+  border-radius: 10px;
+  padding:       1px 7px;
+  font-size:     11px;
+  font-weight:   700;
+  flex-shrink:   0;
+}
+
+/* Track list */
+.track-item {
+  display:       flex;
+  align-items:   center;
+  gap:           10px;
+  padding:       10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.track-item:last-child { border-bottom: none; }
+.track-num  { font-size: 12px; color: var(--text2); width: 22px; text-align: right; flex-shrink: 0; }
+.track-sym  { font-size: 15px; flex-shrink: 0; width: 20px; text-align: center; }
+.track-info { flex: 1; min-width: 0; }
+.track-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.track-artist { font-size: 12px; color: var(--text2); }
+
+/* Rows */
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* Settings */
+.section-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--text2); margin-bottom: 12px;
+}
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+.danger-box { border: 1px solid var(--danger); border-radius: var(--radius); padding: 16px; }
+
+/* Misc */
+.sm { font-size: 12px; color: var(--text2); }
+.mt8  { margin-top:  8px; }
+.mt14 { margin-top: 14px; }
+.gap8 { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Explore tab ───────────────────────────────────────────────────────────── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.stat-card {
+  background:    var(--surface);
+  border:        1px solid var(--border);
+  border-radius: var(--radius);
+  padding:       16px 20px;
+}
+.stat-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+.stat-value { font-size: 28px; font-weight: 700; line-height: 1.1; }
+.stat-value.sm-val { font-size: 15px; font-weight: 600; padding-top: 4px; }
+
+/* Genre tag cloud */
+.genre-cloud { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; line-height: 1.8; }
+.genre-tag {
+  cursor:      pointer;
+  color:       var(--text);
+  opacity:     .8;
+  transition:  opacity .12s, color .12s;
+  white-space: nowrap;
+}
+.genre-tag:hover { opacity: 1; color: var(--accent); }
+.genre-tag.active { color: var(--accent); font-weight: 700; opacity: 1; }
+.genre-tag sup { font-size: .65em; color: var(--text2); margin-left: 1px; }
+.genre-tag.active sup { color: var(--accent); opacity: .7; }
+
+/* Artist rows */
+.artist-row {
+  display:       flex;
+  align-items:   flex-start;
+  gap:           14px;
+  padding:       10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.artist-row:last-child { border-bottom: none; }
+.artist-name { font-weight: 600; font-size: 14px; min-width: 170px; flex-shrink: 0; padding-top: 3px; }
+.artist-genres { display: flex; flex-wrap: wrap; gap: 4px; }
+.a-chip {
+  font-size:     11px;
+  padding:       2px 9px;
+  border-radius: 10px;
+  cursor:        pointer;
+  white-space:   nowrap;
+  transition:    opacity .12s;
+}
+.a-chip:hover { opacity: .7; }
+.artist-row-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
+.btn-gen { font-size: 11px; padding: 3px 10px; border-radius: 20px; background: var(--surface2); border: 1px solid var(--border); color: var(--text2); cursor: pointer; white-space: nowrap; transition: background .12s, color .12s; }
+.btn-gen:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.genre-gen-bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); margin: 8px 0; }
+.genre-gen-bar .genre-gen-label { font-size: 13px; flex: 1; color: var(--text2); }
+.genre-gen-bar .genre-gen-label strong { color: var(--text); }
+
+/* Mode toggle */
+.mode-toggle { display: flex; gap: 2px; background: var(--surface2); border-radius: 8px; padding: 3px; margin-bottom: 14px; width: fit-content; }
+.mode-btn { padding: 6px 14px; border-radius: 6px; background: transparent; color: var(--text2); font-size: 13px; font-weight: 500; border: none; cursor: pointer; }
+.mode-btn.active { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: var(--shadow); }
+
+/* Range slider */
+.slider-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.slider-row input[type=range] { flex: 1; accent-color: var(--accent); cursor: pointer; }
+.slider-val { font-size: 13px; font-weight: 600; color: var(--accent); min-width: 38px; text-align: right; }
+
+/* Settings row for small inputs */
+.setting-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); gap: 12px; }
+.setting-row:last-child { border-bottom: none; }
+.setting-row label { font-size: 13px; font-weight: 500; }
+.setting-row .sub-label { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.setting-num { width: 72px; text-align: center; padding: 6px 8px; }
+.radio-row { display: flex; gap: 16px; }
+.radio-row label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; font-weight: 400; }
+
+/* Spinner */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  display:       inline-block;
+  width:         13px; height: 13px;
+  border:        2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation:     spin .65s linear infinite;
+  vertical-align: middle;
+  margin-right:  6px;
+}
+</style>
+</head>
+<body>
+<div id="app">Loading…</div>
+
+<script>
+'use strict';
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+const DEFAULT_PLAYLIST_ID = '';
+const CLIENT_ID = '6d3ee4dac7564390b28c3e5d85905a44';
+const LASTFM_API_KEY = '345277cd160d3b9f859c6d4713b00a8b'; // Replace with your Last.fm API key
+const SCOPES = [
+  'user-library-read',
+  'user-follow-read',
+  'user-read-private',
+  'playlist-modify-public',
+  'playlist-modify-private',
+].join(' ');
+
+const K = {
+  ACCESS_TOKEN   : 'lk_access_token',
+  REFRESH_TOKEN  : 'lk_refresh_token',
+  TOKEN_EXPIRY   : 'lk_token_expiry',
+  VERIFIER       : 'lk_code_verifier',
+  ARTIST_MAP     : 'lk_artist_map',
+  HISTORY        : 'lk_track_history',
+  THEME          : 'lk_theme',
+  USER_NAME      : 'lk_user_name',
+  PLAYLIST_ID    : 'lk_playlist_id',
+  // Generation settings
+  PL_TRACKS      : 'lk_pl_tracks',    // total tracks, default 20
+  KINDRED_PCT    : 'lk_kindred_pct',  // % new-discovery, default 50
+  PER_ARTIST     : 'lk_per_artist',   // max tracks per artist, default 2
+  HIST_DAYS      : 'lk_hist_days',    // no-repeat window, default 30
+  PL_REUSE       : 'lk_pl_reuse',     // 'reuse'|'create', default 'reuse'
+  REGION_ONLY    : 'lk_region_only',  // only include region-available tracks
+};
+
+// ── App state ─────────────────────────────────────────────────────────────────
+let activeTab       = 'generate';
+let isBusy          = false;
+let syncLog         = [];
+let genLog          = [];
+let lastResult      = null;   // last generation result
+let genMode         = 'random'; // 'random' | 'input'
+let pendingGenerate = null;   // { genre, label } — auto-start when tab opens
+
+// ── Theme ─────────────────────────────────────────────────────────────────────
+(function () {
+  document.documentElement.dataset.theme = localStorage.getItem(K.THEME) || 'light';
+})();
+
+function toggleTheme() {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  localStorage.setItem(K.THEME, next);
+  render();
+}
+
+// ── Storage helpers ───────────────────────────────────────────────────────────
+function lsGet(key, fallback = null) {
+  try { const v = localStorage.getItem(key); return v !== null ? JSON.parse(v) : fallback; }
+  catch { return fallback; }
+}
+function lsSet(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+function getRedirectUri() {
+  return window.location.origin + window.location.pathname;
+}
+function getPlaylistId() {
+  return localStorage.getItem(K.PLAYLIST_ID) || DEFAULT_PLAYLIST_ID;
+}
+
+function getGenSettings() {
+  return {
+    totalTracks : parseInt(localStorage.getItem(K.PL_TRACKS)   || '20'),
+    kindredPct  : parseInt(localStorage.getItem(K.KINDRED_PCT) || '50') / 100,
+    perArtist   : parseInt(localStorage.getItem(K.PER_ARTIST)  || '2'),
+    histDays    : parseInt(localStorage.getItem(K.HIST_DAYS)   || '30'),
+    playlistReuse: (localStorage.getItem(K.PL_REUSE) || 'reuse') === 'reuse',
+    regionOnly  : localStorage.getItem(K.REGION_ONLY) === 'true',
+  };
+}
+
+// Match a user-typed query to a genre or artist in the library.
+// Returns { genre, label } or null.
+function matchArtistOrGenre(query) {
+  const mapData = lsGet(K.ARTIST_MAP);
+  if (!mapData) return null;
+  const q = query.trim().toLowerCase();
+  if (!q) return null;
+  const { artists, genreIndex } = mapData;
+
+  // Exact genre
+  const exactG = Object.keys(genreIndex).find(g => g.toLowerCase() === q);
+  if (exactG) return { genre: exactG, label: exactG };
+
+  // Partial genre
+  const partG = Object.keys(genreIndex).find(g => g.toLowerCase().includes(q));
+  if (partG) return { genre: partG, label: partG };
+
+  // Exact artist
+  const exactA = Object.values(artists).find(a => a.name.toLowerCase() === q);
+  if (exactA) {
+    const g = exactA.genres.find(g => genreIndex[g]);
+    if (g) return { genre: g, label: exactA.name, seedArtistName: exactA.name };
+    return { label: exactA.name, seedArtistName: exactA.name };
+  }
+
+  // Partial artist
+  const partA = Object.values(artists).find(a => a.name.toLowerCase().includes(q));
+  if (partA) {
+    const g = partA.genres.find(g => genreIndex[g]);
+    if (g) return { genre: g, label: partA.name, seedArtistName: partA.name };
+    return { label: partA.name, seedArtistName: partA.name };
+  }
+
+  return null;
+}
+
+// ── PKCE helpers ──────────────────────────────────────────────────────────────
+function randString(len) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  return Array.from(crypto.getRandomValues(new Uint8Array(len)))
+    .map(b => chars[b % chars.length]).join('');
+}
+
+async function codeChallenge(verifier) {
+  const data   = new TextEncoder().encode(verifier);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+async function startAuth() {
+  const verifier  = randString(64);
+  const challenge = await codeChallenge(verifier);
+  localStorage.setItem(K.VERIFIER, verifier);
+
+  const p = new URLSearchParams({
+    client_id: CLIENT_ID, response_type: 'code',
+    redirect_uri: getRedirectUri(),
+    code_challenge_method: 'S256', code_challenge: challenge,
+    scope: SCOPES,
+  });
+  window.location = `https://accounts.spotify.com/authorize?${p}`;
+}
+
+async function handleCallback(code) {
+  const r = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code', code,
+      redirect_uri: getRedirectUri(),
+      client_id: CLIENT_ID,
+      code_verifier: localStorage.getItem(K.VERIFIER),
+    }),
+  });
+  const d = await r.json();
+  if (!d.access_token) throw new Error('Auth failed: ' + JSON.stringify(d));
+  localStorage.setItem(K.ACCESS_TOKEN,  d.access_token);
+  localStorage.setItem(K.REFRESH_TOKEN, d.refresh_token);
+  localStorage.setItem(K.TOKEN_EXPIRY,  Date.now() + d.expires_in * 1000);
+  localStorage.removeItem(K.VERIFIER);
+  window.history.replaceState({}, '', window.location.pathname);
+}
+
+async function refreshToken() {
+  const r = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: localStorage.getItem(K.REFRESH_TOKEN),
+      client_id: CLIENT_ID,
+    }),
+  });
+  const d = await r.json();
+  if (!d.access_token) throw new Error('Token refresh failed');
+  localStorage.setItem(K.ACCESS_TOKEN, d.access_token);
+  if (d.refresh_token) localStorage.setItem(K.REFRESH_TOKEN, d.refresh_token);
+  localStorage.setItem(K.TOKEN_EXPIRY, Date.now() + d.expires_in * 1000);
+  return d.access_token;
+}
+
+async function getToken() {
+  const exp = parseInt(localStorage.getItem(K.TOKEN_EXPIRY) || '0');
+  if (Date.now() > exp - 60_000) return refreshToken();
+  return localStorage.getItem(K.ACCESS_TOKEN);
+}
+
+function isLoggedIn()  { return !!localStorage.getItem(K.ACCESS_TOKEN); }
+
+function logout() {
+  [K.ACCESS_TOKEN, K.REFRESH_TOKEN, K.TOKEN_EXPIRY, K.USER_NAME].forEach(k => localStorage.removeItem(k));
+  render();
+}
+
+// ── Spotify API ───────────────────────────────────────────────────────────────
+async function spotifyFetch(path, opts = {}) {
+  const token = await getToken();
+  const url   = path.startsWith('http') ? path : `https://api.spotify.com/v1${path}`;
+  const res   = await fetch(url, {
+    ...opts,
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', ...opts.headers },
+  });
+  if (res.status === 429) {
+    await sleep(parseInt(res.headers.get('Retry-After') || '2') * 1000);
+    return spotifyFetch(path, opts);
+  }
+  if (res.status === 204) return null;
+  if (!res.ok) throw new Error(`Spotify ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+const api = {
+  get   : p       => spotifyFetch(p),
+  post  : (p, b)  => spotifyFetch(p, { method: 'POST',   body: JSON.stringify(b) }),
+  delete: (p, b)  => spotifyFetch(p, { method: 'DELETE', body: JSON.stringify(b) }),
+};
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+async function fetchWithRetry(url, attempts = 3) {
+  let lastError;
+  for (let i = 0; i < attempts; i++) {
+    const res = await fetch(url);
+    if (res.ok) return res;
+    lastError = new Error(`Fetch failed ${res.status} ${res.statusText}`);
+    if (res.status === 429 || res.status === 503) {
+      const wait = 1000 * Math.pow(2, i);
+      await sleep(wait);
+      continue;
+    }
+    throw lastError;
+  }
+  throw lastError;
+}
+
+// ── Last.fm helpers ───────────────────────────────────────────────────────────
+const LASTFM_BASE_URL = 'https://ws.audioscrobbler.com/2.0/';
+
+async function lastfmApiCall(method, params) {
+  const url = new URL(LASTFM_BASE_URL);
+  url.searchParams.set('method', method);
+  url.searchParams.set('api_key', LASTFM_API_KEY);
+  url.searchParams.set('format', 'json');
+  for (const [k, v] of Object.entries(params)) {
+    url.searchParams.set(k, v);
+  }
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Last.fm API failed: ${res.status}`);
+  return await res.json();
+}
+
+async function getGenresFromLastfm(artistName) {
+  try {
+    const data = await lastfmApiCall('artist.getInfo', { artist: artistName });
+    const tags = data?.artist?.tags?.tag || [];
+    return tags.map(t => t.name.toLowerCase()).filter(Boolean);
+  } catch (e) {
+    console.warn('Failed to get genres from Last.fm:', e);
+    return [];
+  }
+}
+
+async function getRelatedArtistsFromLastfm(artistName) {
+  try {
+    const data = await lastfmApiCall('artist.getSimilar', { artist: artistName, limit: 25 });
+    const similar = data?.similarartists?.artist || [];
+    return similar.map(a => a.name).filter(Boolean);
+  } catch (e) {
+    console.warn('Failed to get related artists from Last.fm:', e);
+    return [];
+  }
+}
+
+// ── History ───────────────────────────────────────────────────────────────────
+function loadHistory() {
+  const { histDays } = getGenSettings();
+  const cutoff = Date.now() - histDays * 86_400_000;
+  return (lsGet(K.HISTORY, [])).filter(e => e.usedAt > cutoff);
+}
+
+function saveHistory(tracks) {
+  const existing = loadHistory();
+  const ids      = new Set(existing.map(e => e.id));
+  const now      = Date.now();
+  for (const t of tracks) {
+    if (!ids.has(t.id)) existing.push({ id: t.id, name: t.name, artist: t.artists?.[0]?.name || '', usedAt: now });
+  }
+  lsSet(K.HISTORY, existing);
+}
+
+// ── Library sync ──────────────────────────────────────────────────────────────
+async function syncLibrary(log) {
+  log('Starting library sync …', 'info');
+
+  // Step 1 — unique artist IDs from liked songs
+  const artistIds = new Set();
+  let offset = 0, total = 1;
+  while (offset < total) {
+    const page = await api.get(`/me/tracks?limit=50&offset=${offset}`);
+    total = page.total;
+    for (const item of page.items)
+      for (const a of (item.track?.artists || []))
+        if (a.id) artistIds.add(a.id);
+    offset += page.items.length;
+    log(`  Liked songs: ${Math.min(offset, total)} / ${total}`, 'dim');
+    await sleep(80);
+  }
+  log(`Found ${artistIds.size} unique artists in liked songs`, 'info');
+
+  // Step 2 — batch-fetch full artist objects (need genres)
+  const artists = {};
+  const idList  = [...artistIds];
+  for (let i = 0; i < idList.length; i += 50) {
+    const result = await api.get(`/artists?ids=${idList.slice(i, i + 50).join(',')}`);
+    for (const a of (result.artists || []))
+      if (a) {
+        const genres = await getGenresFromLastfm(a.name);
+        await sleep(250);
+        artists[a.id] = { id: a.id, name: a.name, genres, source: 'liked' };
+      }
+    log(`  Artist details: ${Math.min(i + 50, idList.length)} / ${idList.length}`, 'dim');
+    await sleep(80);
+  }
+
+  // Step 3 — followed artists (already include genres)
+  let after = undefined, followCount = 0;
+  while (true) {
+    const url  = `/me/following?type=artist&limit=50${after ? '&after=' + after : ''}`;
+    const page = await api.get(url);
+    const items = page.artists?.items || [];
+    if (!items.length) break;
+    for (const a of items) {
+      const genres = await getGenresFromLastfm(a.name);
+      await sleep(250);
+      if (artists[a.id]) {
+        artists[a.id].source = 'both';
+        if (!artists[a.id].genres.length) artists[a.id].genres = genres;
+      } else {
+        artists[a.id] = { id: a.id, name: a.name, genres, source: 'followed' };
+      }
+    }
+    followCount += items.length;
+    log(`  Followed artists: ${followCount}`, 'dim');
+    after = page.artists?.cursors?.after;
+    if (!after) break;
+    await sleep(80);
+  }
+
+  // Step 4 — build genre index
+  const genreIndex = {};
+  for (const a of Object.values(artists))
+    for (const g of a.genres) {
+      if (!genreIndex[g]) genreIndex[g] = [];
+      genreIndex[g].push(a.id);
+    }
+
+  lsSet(K.ARTIST_MAP, { artists, genreIndex, lastSync: new Date().toISOString() });
+  log(`✓ ${Object.keys(artists).length} artists · ${Object.keys(genreIndex).length} genres saved`, 'success');
+  return { artists, genreIndex };
+}
+
+// ── Playlist generation ───────────────────────────────────────────────────────
+function pickGenre(genreIndex) {
+  const genres  = Object.keys(genreIndex);
+  const weights = genres.map(g => genreIndex[g].length);
+  let   rand    = Math.random() * weights.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < genres.length; i++) { rand -= weights[i]; if (rand <= 0) return genres[i]; }
+  return genres[genres.length - 1];
+}
+
+async function getLikedForGenre(genreArtistIds, historySet, targetLiked, perArtist, log) {
+  const matched      = [];
+  const artistCounts = new Map(); // artist-name → count already included
+  let offset = 0, total = 1;
+  while (matched.length < targetLiked && offset < total) {
+    const page = await api.get(`/me/tracks?limit=50&offset=${offset}`);
+    total = page.total;
+    for (const item of page.items) {
+      const t = item.track;
+      if (!t?.id || historySet.has(t.id)) continue;
+      const aids = t.artists.map(a => a.id);
+      const ans  = t.artists.map(a => a.name.toLowerCase());
+      if (!aids.some(id => genreArtistIds.has(id))) continue;
+      // Enforce per-artist cap
+      if (ans.some(n => (artistCounts.get(n) || 0) >= perArtist)) continue;
+      matched.push(t);
+      ans.forEach(n => artistCounts.set(n, (artistCounts.get(n) || 0) + 1));
+      if (matched.length >= targetLiked) break;
+    }
+    offset += page.items.length;
+    await sleep(80);
+  }
+  return matched;
+}
+
+async function findNewTrack(seed, libNames, historySet, usedIds, log, regionOnly) {
+  const seedArtistName = seed.artists[0]?.name;
+  const seedArtistId = seed.artists[0]?.id;
+  if (!seedArtistName || !seedArtistId) return null;
+
+  // Strategy A: related artists from Last.fm → top tracks
+  try {
+    const relatedNames = await getRelatedArtistsFromLastfm(seedArtistName);
+    const shuffled = relatedNames.filter(n => !libNames.has(n.toLowerCase()))
+      .sort(() => Math.random() - .5);
+    for (const relName of shuffled) {
+      const searchRes = await api.get(`/search?q=${encodeURIComponent(`artist:"${relName}"`)}&type=artist&limit=1`);
+      const artists = searchRes.artists?.items || [];
+      if (!artists.length) continue;
+      const rel = artists[0];
+      const tops = (await api.get(`/artists/${rel.id}/top-tracks?market=from_token`)).tracks || [];
+      await sleep(60);
+      for (const t of tops) {
+        if (!t?.id || historySet.has(t.id) || usedIds.has(t.id)) continue;
+        if (t.artists.some(a => libNames.has(a.name.toLowerCase()))) continue;
+        return t;
+      }
+    }
+  } catch (e) { log(`  related-artist lookup failed: ${e.message}`, 'warn'); }
+
+  // Strategy B: genre keyword search using Last.fm genres
+  try {
+    const genres = await getGenresFromLastfm(seedArtistName);
+    const genre  = genres[0];
+    const q      = genre ? encodeURIComponent(`genre:"${genre}"`) : encodeURIComponent(seed.name);
+    const res    = await api.get(`/search?q=${q}&type=track&limit=50${regionOnly ? '&market=from_token' : ''}`);
+    const tracks = (res.tracks?.items || []).sort(() => Math.random() - .5);
+    for (const t of tracks) {
+      if (!t?.id || historySet.has(t.id) || usedIds.has(t.id)) continue;
+      if (t.artists.some(a => libNames.has(a.name.toLowerCase()))) continue;
+      return t;
+    }
+  } catch (e) { log(`  genre search failed: ${e.message}`, 'warn'); }
+
+  return null;
+}
+
+async function clearPlaylist(playlistId) {
+  const ids = [];
+  let url = `/playlists/${playlistId}/tracks?fields=items(track(id)),next,total&limit=100`;
+  while (url) {
+    const page = await api.get(url);
+    for (const item of (page.items || []))
+      if (item.track?.id) ids.push(item.track.id);
+    url = page.next || null;
+    await sleep(100);
+  }
+  for (let i = 0; i < ids.length; i += 100) {
+    await api.delete(`/playlists/${playlistId}/tracks`,
+      { tracks: ids.slice(i, i + 100).map(id => ({ uri: `spotify:track:${id}` })) });
+    await sleep(200);
+  }
+  return ids.length;
+}
+
+async function generatePlaylist(log, opts = {}) {
+  const mapData = lsGet(K.ARTIST_MAP);
+  if (!mapData) throw new Error('No artist data — run "Sync Library" first.');
+
+  const { artists, genreIndex } = mapData;
+  const { totalTracks, kindredPct, perArtist, playlistReuse, regionOnly } = getGenSettings();
+  const targetNew   = Math.round(totalTracks * kindredPct);
+  const targetLiked = totalTracks - targetNew;
+
+  // Genre selection
+  const genre = opts.genre || pickGenre(genreIndex);
+  const label = opts.label && opts.label !== genre ? `${opts.label} → ${genre}` : genre;
+  log(`🎵 Genre: ${label}`, 'info');
+  log(`📐 ${targetLiked} liked + ${targetNew} new = ${totalTracks} tracks · max ${perArtist}/artist`, 'dim');
+
+  const history    = loadHistory();
+  const historySet = new Set(history.map(e => e.id));
+  log(`📋 Excluding ${historySet.size} recently used tracks`, 'dim');
+
+  const genreArtistIds = new Set(genreIndex[genre] || []);
+  log(`👥 ${genreArtistIds.size} library artists in this genre`, 'dim');
+  const libNames = new Set(Object.values(artists).map(a => a.name.toLowerCase()));
+
+  // Liked songs
+  log(`🔍 Scanning for ${targetLiked} liked songs …`, 'info');
+  const liked = await getLikedForGenre(genreArtistIds, historySet, targetLiked, perArtist, log);
+  if (!liked.length) throw new Error('No liked songs found for this genre. Re-run to try a different genre.');
+  log(`Found ${liked.length} liked track(s)`, 'success');
+  for (const t of liked) log(`  ♥  ${t.artists[0].name} — ${t.name}`, 'dim');
+
+  // New discoveries
+  log(`🔎 Finding ${targetNew} new discoveries …`, 'info');
+  const usedIds  = new Set([...historySet, ...liked.map(t => t.id)]);
+  const newTracks = [];
+  for (const seed of liked) {
+    if (newTracks.length >= targetNew) break;
+    const t = await findNewTrack(seed, libNames, historySet, usedIds, log, regionOnly);
+    if (t) {
+      newTracks.push(t);
+      usedIds.add(t.id);
+      log(`  ✨ ${t.artists[0].name} — ${t.name}`, 'dim');
+    } else {
+      log(`  ⚠ No match for: ${seed.artists[0].name} — ${seed.name}`, 'warn');
+    }
+    await sleep(120);
+  }
+
+  if (perArtist > 1) {
+    const seedArtist = opts.seedArtistName?.toLowerCase();
+    if (seedArtist) {
+      const idx = liked.findIndex(t => t.artists.some(a => a.name.toLowerCase() === seedArtist));
+      if (idx > 0) liked.unshift(liked.splice(idx, 1)[0]);
+      const first = liked.shift();
+      shuffleArray(liked);
+      liked.unshift(first);
+    } else {
+      shuffleArray(liked);
+    }
+    shuffleArray(newTracks);
+  } else if (opts.seedArtistName) {
+    const seedArtist = opts.seedArtistName.toLowerCase();
+    const idx = liked.findIndex(t => t.artists.some(a => a.name.toLowerCase() === seedArtist));
+    if (idx > 0) liked.unshift(liked.splice(idx, 1)[0]);
+  }
+
+  // Interleave liked / new
+  const playlist = [];
+  for (let i = 0; i < Math.max(liked.length, newTracks.length); i++) {
+    if (i < liked.length)     playlist.push({ ...liked[i],     _type: 'liked' });
+    if (i < newTracks.length) playlist.push({ ...newTracks[i], _type: 'new'   });
+  }
+
+  // Create a new playlist or clear and reuse the existing one
+  let pid = getPlaylistId();
+  const shouldReuse = pid && playlistReuse;
+  if (shouldReuse) {
+    log('🗑  Clearing existing playlist …', 'info');
+    const removed = await clearPlaylist(pid);
+    log(`  Removed ${removed} old tracks`, 'dim');
+  } else {
+    log('📋 Creating new playlist …', 'info');
+    const me   = await api.get('/me');
+    const date = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const newPl = await api.post(`/users/${me.id}/playlists`, {
+      name: `Liked & Kindred — ${genre} (${date})`,
+      public: false,
+      description: `Auto-generated · ${genre} · ${new Date().toLocaleDateString()}`,
+    });
+    pid = newPl.id;
+    log(`  Created "${newPl.name}"`, 'dim');
+  }
+
+  await api.post(`/playlists/${pid}/tracks`, { uris: playlist.map(t => `spotify:track:${t.id}`) });
+  log(`✅ Added ${playlist.length} tracks`, 'success');
+
+  saveHistory(playlist);
+  log('💾 History saved', 'dim');
+
+  const check = await api.get(`/playlists/${pid}?fields=tracks(total),name`);
+  log(`✓ "${check.name}" — ${check.tracks.total} tracks on Spotify`, 'success');
+
+  return { genre, label, playlist, playlistId: pid };
+}
+
+// ── DOM helpers ───────────────────────────────────────────────────────────────
+function el(tag, props = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (v === undefined || v === null) continue;
+    if (k === 'class')    { e.className = v; }
+    else if (k === 'disabled') { e.disabled = !!v; }
+    else if (k.startsWith('on')) { e.addEventListener(k.slice(2).toLowerCase(), v); }
+    else { e.setAttribute(k, v); }
+  }
+  for (const kid of kids) {
+    if (kid == null) continue;
+    e.append(typeof kid === 'string' ? document.createTextNode(kid) : kid);
+  }
+  return e;
+}
+
+// ── Render helpers ────────────────────────────────────────────────────────────
+function appendLogLine(containerId, msg, type) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  c.append(el('div', { class: `log-line ${type}` }, msg));
+  c.scrollTop = c.scrollHeight;
+}
+
+function makeLogDiv(id, lines) {
+  const d = el('div', { class: 'log', id });
+  for (const line of lines) d.append(el('div', { class: `log-line ${line.type}` }, line.msg));
+  requestAnimationFrame(() => { d.scrollTop = d.scrollHeight; });
+  return d;
+}
+
+// ── Render: header ────────────────────────────────────────────────────────────
+function renderHeader() {
+  const isDark  = document.documentElement.dataset.theme === 'dark';
+  const userName = localStorage.getItem(K.USER_NAME);
+  return el('header', { class: 'header' },
+    el('div', { class: 'logo' }, el('span', { class: 'logo-dot' }, '●'), ' Liked & Kindred'),
+    el('div', { class: 'header-right' },
+      userName ? el('span', { class: 'user-chip' }, userName) : null,
+      el('button', { class: 'btn-ghost btn-sm', title: 'Toggle theme', onClick: toggleTheme },
+        isDark ? '☀ Light' : '◑ Dark'),
+      isLoggedIn()
+        ? el('button', { class: 'btn-ghost btn-sm', onClick: logout }, 'Disconnect')
+        : null,
+    )
+  );
+}
+
+// ── Render: setup / login ─────────────────────────────────────────────────────
+function renderSetup() {
+  return el('div', { class: 'center-wrap' },
+    el('div', { class: 'setup-card' },
+      el('h1', {}, '🎵 Liked & Kindred'),
+      el('p',  { class: 'sub' }, 'Discover music you love — and music you don\'t know yet.'),
+      el('button', { class: 'btn-primary', style: 'width:100%', onClick: startAuth }, 'Connect with Spotify →'),
+      el('p', { class: 'help' },
+        'Log in with your Spotify account to get started.\n',
+        'The app will access your liked songs and create playlists for you.',
+      )
+    )
+  );
+}
+
+// ── Render: sync tab ──────────────────────────────────────────────────────────
+function renderSyncTab() {
+  const mapData    = lsGet(K.ARTIST_MAP);
+  const genreIndex = mapData?.genreIndex || {};
+  const lastSync   = mapData?.lastSync;
+  const topGenres  = Object.entries(genreIndex).sort((a, b) => b[1].length - a[1].length).slice(0, 24);
+  const artCount   = Object.keys(mapData?.artists || {}).length;
+
+  const statusEl = lastSync
+    ? el('span', { class: 'badge badge-ok' }, `Synced ${new Date(lastSync).toLocaleDateString()}`)
+    : el('span', { class: 'badge badge-warn' }, 'Not synced yet');
+
+  const isSyncing = isBusy && activeTab === 'sync';
+  const syncBtn = el('button', { class: 'btn-primary', disabled: isBusy, onClick: async () => {
+    if (isBusy) return;
+    isBusy = true; syncLog = []; render();
+    try {
+      await syncLibrary((msg, type = 'info') => {
+        syncLog.push({ msg, type });
+        appendLogLine('sync-log', msg, type);
+      });
+      try {
+        const me = await api.get('/me');
+        localStorage.setItem(K.USER_NAME, me.display_name || me.id);
+      } catch (_) {}
+    } catch (e) {
+      syncLog.push({ msg: '✗ ' + e.message, type: 'error' });
+      appendLogLine('sync-log', '✗ ' + e.message, 'error');
+    }
+    isBusy = false; render();
+  }},
+    isSyncing ? el('span', {}, el('span', { class: 'spinner' }), 'Syncing…') : 'Sync Library Now'
+  );
+
+  return el('div', {},
+    el('div', { class: 'card' },
+      el('p', { class: 'card-title' }, 'Library Sync'),
+      el('p', { class: 'card-desc' },
+        'Scans your Liked Songs and followed artists to build a genre → artist map, stored in your browser. ' +
+        'Run once, then refresh periodically as your library grows.'
+      ),
+      el('div', { class: 'row' },
+        el('div', { class: 'row', style: 'gap:8px' },
+          statusEl,
+          artCount ? el('span', { class: 'sm' }, `${artCount} artists`) : null,
+        ),
+        syncBtn,
+      ),
+      syncLog.length ? makeLogDiv('sync-log', syncLog) : null,
+    ),
+
+    topGenres.length ? el('div', { class: 'card' },
+      el('p', { class: 'card-title' }, `Genre Map — ${Object.keys(genreIndex).length} genres`),
+      el('div', { class: 'genre-grid' },
+        ...topGenres.map(([g, ids]) =>
+          el('div', { class: 'genre-chip' }, el('span', {}, g), el('span', { class: 'cnt' }, String(ids.length)))
+        )
+      )
+    ) : null,
+  );
+}
+
+// ── Render: generate tab ──────────────────────────────────────────────────────
+function renderGenerateTab() {
+  const mapData = lsGet(K.ARTIST_MAP);
+  const history = loadHistory();
+  const isGen   = isBusy && activeTab === 'generate';
+
+  // Shared generate runner — accepts opts { genre?, label? }
+  function runGenerate(opts = {}) {
+    if (isBusy || !mapData) return;
+    isBusy = true; genLog = []; lastResult = null; render();
+    generatePlaylist((msg, type = 'info') => {
+      genLog.push({ msg, type });
+      appendLogLine('gen-log', msg, type);
+    }, opts)
+      .then(r  => { lastResult = r; })
+      .catch(e => {
+        genLog.push({ msg: '✗ ' + e.message, type: 'error' });
+        appendLogLine('gen-log', '✗ ' + e.message, 'error');
+      })
+      .finally(() => { isBusy = false; render(); });
+  }
+
+  // Auto-start if triggered from Explore tab
+  if (pendingGenerate) {
+    const opts = { ...pendingGenerate };
+    pendingGenerate = null;
+    setTimeout(() => runGenerate(opts), 0);
+  }
+
+  // Mode toggle
+  const modeBar = el('div', { class: 'mode-toggle' },
+    el('button', {
+      class: `mode-btn${genMode === 'random' ? ' active' : ''}`,
+      onClick: () => { genMode = 'random'; render(); },
+    }, 'Random genre'),
+    el('button', {
+      class: `mode-btn${genMode === 'input' ? ' active' : ''}`,
+      onClick: () => { genMode = 'input'; render(); },
+    }, 'By artist / genre'),
+  );
+
+  // Input mode section
+  let currentInp = null;
+  let inputSection = null;
+  if (genMode === 'input') {
+    const matchLabel = el('p', { class: 'sm', style: 'margin-top:6px;min-height:18px' });
+    const inp = el('input', { type: 'text', placeholder: 'e.g. Bonobo, trip hop, Radiohead…' });
+    inp.addEventListener('input', () => {
+      const m = matchArtistOrGenre(inp.value);
+      if (!inp.value.trim()) { matchLabel.textContent = ''; return; }
+      matchLabel.textContent  = m ? `→ genre: ${m.genre}` : 'No match in your library';
+      matchLabel.style.color  = m ? 'var(--accent)' : 'var(--danger)';
+    });
+    currentInp   = inp;
+    inputSection = el('div', { class: 'mt8' }, inp, matchLabel);
+  }
+
+  const s        = getGenSettings();
+  const pid      = getPlaylistId();
+  const plUrl    = pid ? `https://open.spotify.com/playlist/${pid}` : '#';
+  const descParts = [
+    `${s.totalTracks} tracks`,
+    `${Math.round(s.kindredPct * 100)}% new discoveries`,
+    `max ${s.perArtist}/artist`,
+    pid && s.playlistReuse ? 'reuse playlist' : 'create new playlist',
+    s.regionOnly ? 'region-only tracks' : null,
+  ].filter(Boolean);
+
+  const genBtn = el('button', {
+    class: 'btn-primary',
+    disabled: isBusy || !mapData,
+    onClick: () => {
+      if (genMode === 'input') {
+        const m = matchArtistOrGenre(currentInp?.value || '');
+        if (!m) { alert('No matching artist or genre found in your library.'); return; }
+        runGenerate(m);
+      } else {
+        runGenerate({});
+      }
+    },
+  }, isGen
+    ? el('span', {}, el('span', { class: 'spinner' }), 'Generating…')
+    : '▶ Generate Playlist'
+  );
+
+  return el('div', {},
+    el('div', { class: 'card' },
+      el('p', { class: 'card-title' }, 'Generate Playlist'),
+      el('p', { class: 'card-desc' },
+        'Finds liked songs matching a genre, discovers similar tracks from outside your library, then rebuilds ',
+        el('a', { href: plUrl, target: '_blank' }, 'Liked & Kindred'),
+        '.'
+      ),
+      !mapData
+        ? el('p', { style: 'color:var(--danger);font-size:13px;margin-bottom:10px' },
+            '⚠ Sync your library first.')
+        : null,
+      modeBar,
+      inputSection,
+      el('div', { class: 'row', style: 'margin-top:12px' },
+        el('div', {},
+          el('span', { class: 'sm' }, descParts.join(' · ')),
+          el('br'),
+          el('span', { class: 'sm' }, `${history.length} tracks in recent history`),
+        ),
+        genBtn,
+      ),
+      genLog.length ? makeLogDiv('gen-log', genLog) : null,
+    ),
+
+    lastResult ? el('div', { class: 'card' },
+      el('p', { class: 'card-title' }, `Result — ${lastResult.label || lastResult.genre}`),
+      el('div', {},
+        ...lastResult.playlist.map((t, i) =>
+          el('div', { class: 'track-item' },
+            el('span', { class: 'track-num' }, String(i + 1)),
+            el('span', { class: 'track-sym' }, t._type === 'liked' ? '♥' : '✨'),
+            el('div', { class: 'track-info' },
+              el('div', { class: 'track-name'   }, t.name),
+              el('div', { class: 'track-artist' }, t.artists[0]?.name || ''),
+            )
+          )
+        )
+      )
+    ) : null,
+  );
+}
+
+// ── Render: settings tab ──────────────────────────────────────────────────────
+function renderSettingsTab() {
+  const pidInp = el('input', { type: 'text', value: getPlaylistId() });
+  const mapData = lsGet(K.ARTIST_MAP);
+  const history = loadHistory();
+  const s = getGenSettings();
+  const artCount = Object.keys(mapData?.artists || {}).length;
+  const statusEl = mapData?.lastSync
+    ? el('span', { class: 'badge badge-ok' }, `Synced ${new Date(mapData.lastSync).toLocaleDateString()}`)
+    : el('span', { class: 'badge badge-warn' }, 'Not synced yet');
+  const isSyncing = isBusy;
+  const syncBtn = el('button', { class: 'btn-primary', disabled: isBusy, onClick: async () => {
+    if (isBusy) return;
+    isBusy = true; syncLog = []; render();
+    try {
+      await syncLibrary((msg, type = 'info') => {
+        syncLog.push({ msg, type });
+        appendLogLine('settings-sync-log', msg, type);
+      });
+      try {
+        const me = await api.get('/me');
+        localStorage.setItem(K.USER_NAME, me.display_name || me.id);
+      } catch (_) {}
+    } catch (e) {
+      syncLog.push({ msg: '✗ ' + e.message, type: 'error' });
+      appendLogLine('settings-sync-log', '✗ ' + e.message, 'error');
+    }
+    isBusy = false; render();
+  }},
+    isSyncing ? el('span', {}, el('span', { class: 'spinner' }), 'Syncing…') : 'Sync Library Now'
+  );
+
+  // Kindred % slider
+  const kindredValEl = el('span', { class: 'slider-val' }, `${Math.round(s.kindredPct * 100)}%`);
+  const kindredSlider = el('input', {
+    type: 'range', min: '0', max: '100', value: String(Math.round(s.kindredPct * 100)),
+    onInput: (e) => { kindredValEl.textContent = `${e.target.value}%`; },
+  });
+
+  const tracksInp   = el('input', { type: 'number', class: 'setting-num', min: '2', max: '100',  value: String(s.totalTracks) });
+  const perArtistInp = el('input', { type: 'number', class: 'setting-num', min: '1', max: '10',  value: String(s.perArtist) });
+  const histDaysInp  = el('input', { type: 'number', class: 'setting-num', min: '1', max: '365', value: String(s.histDays) });
+
+  function makeRadio(name, val, checked, label) {
+    const inp = el('input', { type: 'radio', name, value: val });
+    inp.checked = checked;
+    return el('label', {}, inp, ' ' + label);
+  }
+
+  const reuseRadio  = makeRadio('plmode', 'reuse',  s.playlistReuse,  'Reuse "Liked & Kindred"');
+  const createRadio = makeRadio('plmode', 'create', !s.playlistReuse, 'Create new playlist each time');
+
+  const regionOnlyChk = el('input', { type: 'checkbox' });
+  regionOnlyChk.checked = s.regionOnly;
+
+  function saveGenSettings() {
+    localStorage.setItem(K.PL_TRACKS,   tracksInp.value.trim());
+    localStorage.setItem(K.KINDRED_PCT, kindredSlider.value);
+    localStorage.setItem(K.PER_ARTIST,  perArtistInp.value.trim());
+    localStorage.setItem(K.HIST_DAYS,   histDaysInp.value.trim());
+    localStorage.setItem(K.REGION_ONLY, regionOnlyChk.checked ? 'true' : 'false');
+    const mode = reuseRadio.querySelector('input').checked ? 'reuse' : 'create';
+    localStorage.setItem(K.PL_REUSE, mode);
+  }
+
+  const spotifyAppCard = el('div', { class: 'card' },
+    el('p', { class: 'section-label' }, 'Spotify App'),
+    el('div', { class: 'field' },
+      el('label', {}, 'Target Playlist ID'),
+      pidInp,
+      el('p', { class: 'sm mt8' },
+        'Open the playlist in Spotify → Share → Copy link. The ID is the part after /playlist/. Leave empty to always create new playlists.'
+      ),
+    ),
+    el('button', { class: 'btn-primary', onClick: () => {
+      localStorage.setItem(K.PLAYLIST_ID, pidInp.value.trim());
+      render(); alert('Settings saved.');
+    }}, 'Save'),
+  );
+
+  const syncCard = el('div', { class: 'card' },
+    el('p', { class: 'card-title' }, 'Library Sync'),
+    el('p', { class: 'card-desc' },
+      'Scans your Liked Songs and followed artists to build a genre → artist map, stored in your browser. Run once, then refresh periodically as your library grows.'
+    ),
+    el('div', { class: 'row' },
+      el('div', { class: 'row', style: 'gap:8px' },
+        statusEl,
+        artCount ? el('span', { class: 'sm' }, `${artCount} artists`) : null,
+      ),
+      syncBtn,
+    ),
+    syncLog.length ? makeLogDiv('settings-sync-log', syncLog) : null,
+  );
+
+  const generationCard = el('div', { class: 'card' },
+    el('p', { class: 'section-label' }, 'Playlist Generation'),
+
+    el('div', { class: 'setting-row' },
+      el('div', {},
+        el('label', {}, 'Total tracks'),
+        el('div', { class: 'sub-label' }, 'How many tracks to put in the playlist'),
+      ),
+      tracksInp,
+    ),
+    el('div', { class: 'setting-row' },
+      el('div', {},
+        el('label', {}, 'Only tracks available in my region'),
+        el('div', { class: 'sub-label' }, 'Use Spotify region availability to filter new discovery tracks'),
+      ),
+      el('label', {}, regionOnlyChk, ' Use region-only tracks'),
+    ),
+
+    el('div', { class: 'setting-row', style: 'display:block;padding:12px 0' },
+      el('div', { style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:6px' },
+        el('div', {},
+          el('label', {}, 'Kindred percentage'),
+          el('div', { class: 'sub-label' }, 'Share of new-discovery tracks vs. your liked songs'),
+        ),
+        kindredValEl,
+      ),
+      el('div', { class: 'slider-row' }, kindredSlider),
+      el('div', { class: 'sm', style: 'display:flex;justify-content:space-between;margin-top:4px' },
+        el('span', {}, '0% all liked'),
+        el('span', {}, '50% equal split'),
+        el('span', {}, '100% all new'),
+      ),
+    ),
+
+    el('div', { class: 'setting-row' },
+      el('div', {},
+        el('label', {}, 'Max tracks per artist'),
+        el('div', { class: 'sub-label' }, 'Limit how many songs one artist can contribute'),
+      ),
+      perArtistInp,
+    ),
+
+    el('div', { class: 'setting-row' },
+      el('div', {},
+        el('label', {}, 'No-repeat window (days)'),
+        el('div', { class: 'sub-label' }, 'Tracks used more recently than this are excluded'),
+      ),
+      histDaysInp,
+    ),
+
+    el('div', { class: 'setting-row', style: 'display:block;padding:12px 0' },
+      el('label', {}, 'Playlist mode'),
+      el('div', { class: 'radio-row', style: 'margin-top:8px' }, reuseRadio, createRadio),
+    ),
+
+    el('button', { class: 'btn-primary', style: 'margin-top:4px', onClick: () => {
+      saveGenSettings(); render(); alert('Generation settings saved.');
+    }}, 'Save Generation Settings'),
+  );
+
+  const storedDataCard = el('div', { class: 'card' },
+    el('p', { class: 'section-label' }, 'Stored Data'),
+    el('p', { class: 'sm' },
+      mapData
+        ? `Artist map: ${Object.keys(mapData.artists).length} artists · ${Object.keys(mapData.genreIndex).length} genres · synced ${new Date(mapData.lastSync).toLocaleString()}`
+        : 'Artist map: not synced yet'
+    ),
+    el('p', { class: 'sm mt8' }, `Track history: ${history.length} entries (${s.histDays}-day window)`),
+  );
+
+  const dangerCard = el('div', { class: 'card' },
+    el('p', { class: 'section-label' }, 'Danger Zone'),
+    el('div', { class: 'danger-box' },
+      el('div', { class: 'gap8' },
+        el('button', { class: 'btn-danger btn-sm', onClick: () => {
+          if (confirm('Clear track history? Deduplication will reset.')) {
+            localStorage.removeItem(K.HISTORY); render();
+          }
+        }}, 'Clear History'),
+        el('button', { class: 'btn-danger btn-sm', onClick: () => {
+          if (confirm('Clear artist map? You\'ll need to sync again.')) {
+            localStorage.removeItem(K.ARTIST_MAP); render();
+          }
+        }}, 'Clear Artist Map'),
+        el('button', { class: 'btn-danger btn-sm', onClick: () => {
+          if (confirm('Disconnect your Spotify account?')) logout();
+        }}, 'Disconnect'),
+      )
+    ),
+  );
+
+  return el('div', {}, spotifyAppCard, syncCard, generationCard, storedDataCard, dangerCard);
+}
+
+// ── Render: explore tab ───────────────────────────────────────────────────────
+const HUES = [210, 130, 340, 270, 45, 20, 160, 190, 350, 230, 60, 300];
+
+function chipStyle(genre) {
+  let h = 0;
+  for (const c of genre) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const hue  = HUES[h % HUES.length];
+  const dark = document.documentElement.dataset.theme === 'dark';
+  return dark
+    ? `background:hsl(${hue},35%,22%);color:hsl(${hue},70%,72%)`
+    : `background:hsl(${hue},60%,92%);color:hsl(${hue},70%,28%)`;
+}
+
+function renderExploreTab() {
+  const mapData = lsGet(K.ARTIST_MAP);
+  if (!mapData) {
+    return el('div', { class: 'card' },
+      el('p', { class: 'card-desc', style: 'color:var(--danger)' },
+        '⚠ No data yet — go to Sync Library to build your genre map first.')
+    );
+  }
+
+  const { artists, genreIndex } = mapData;
+  const sortedGenres  = Object.entries(genreIndex).sort((a, b) => b[1].length - a[1].length);
+  const sortedArtists = Object.values(artists).sort((a, b) => a.name.localeCompare(b.name));
+  const counts        = sortedGenres.map(([, ids]) => ids.length);
+  const maxC = counts[0] || 1, minC = counts[counts.length - 1] || 1;
+
+  // Font-size scale for genre cloud (12 px → 34 px)
+  function tagSize(n) {
+    if (maxC === minC) return 16;
+    return Math.round(12 + ((n - minC) / (maxC - minC)) * 22);
+  }
+
+  // Mutable filter state — lives inside this function, no full re-render needed
+  let selGenre = null;
+
+  const cloudEl      = el('div', { class: 'genre-cloud' });
+  const artistListEl = el('div', {});
+  const countLabelEl = el('div', { class: 'sm', style: 'margin-bottom:12px;font-weight:600' });
+
+  // Build genre tag cloud
+  const tagEls = {};
+  for (const [genre, ids] of sortedGenres) {
+    const tag = el('span', {
+      class: 'genre-tag',
+      style: `font-size:${tagSize(ids.length)}px`,
+      'data-g': genre,
+    }, genre + '\u202f', el('sup', {}, String(ids.length)));
+    tag.addEventListener('click', () => selectGenre(genre === selGenre ? null : genre));
+    tagEls[genre] = tag;
+    cloudEl.append(tag);
+  }
+
+  // Genre "Generate" bar (shown when a genre is selected in the cloud)
+  const genreActionBar = el('div', { class: 'genre-gen-bar', style: 'display:none' });
+  const genreActionLabel = el('span', { class: 'genre-gen-label' });
+  const genreActionBtn   = el('button', { class: 'btn-primary btn-sm' }, '▶ Generate playlist');
+  genreActionBar.append(genreActionLabel, genreActionBtn);
+
+  function launchGenerate(opts) {
+    pendingGenerate = opts;
+    genMode = 'random'; // will be overridden by pendingGenerate
+    activeTab = 'generate';
+    render();
+  }
+
+  function selectGenre(genre) {
+    selGenre = genre;
+    for (const [g, t] of Object.entries(tagEls)) t.classList.toggle('active', g === genre);
+
+    if (genre) {
+      genreActionLabel.innerHTML = `Generate playlist for <strong>${genre}</strong>`;
+      genreActionBar.style.display = 'flex';
+      genreActionBtn.onclick = () => launchGenerate({ genre, label: genre });
+    } else {
+      genreActionBar.style.display = 'none';
+    }
+    updateList();
+  }
+
+  function updateList() {
+    const q = searchInp.value.trim().toLowerCase();
+    let filtered = sortedArtists;
+
+    if (selGenre) {
+      const ids = new Set(genreIndex[selGenre] || []);
+      filtered  = filtered.filter(a => ids.has(a.id));
+    }
+    if (q) {
+      filtered = filtered.filter(a =>
+        a.name.toLowerCase().includes(q) ||
+        a.genres.some(g => g.toLowerCase().includes(q))
+      );
+    }
+
+    countLabelEl.textContent = `${filtered.length} artist${filtered.length !== 1 ? 's' : ''}`;
+    artistListEl.innerHTML = '';
+    for (const a of filtered) {
+      const genreEl = el('div', { class: 'artist-genres' },
+        ...a.genres.map(g => {
+          const chip = el('span', { class: 'a-chip', style: chipStyle(g) }, g);
+          chip.addEventListener('click', () => selectGenre(g === selGenre ? null : g));
+          return chip;
+        })
+      );
+
+      // Determine a genre to use when generating for this artist.
+      // If the artist has no genre data, fall back to random genre selection.
+      const artistGenre = a.genres.find(g => genreIndex[g]) || null;
+      const genBtn = el('button', { class: 'btn-gen' }, '▶');
+      genBtn.title = artistGenre
+        ? `Generate playlist for ${a.name} (${artistGenre})`
+        : `Generate playlist (no genre data for ${a.name} — will pick random genre)`;
+      genBtn.style.opacity = artistGenre ? '1' : '0.5';
+      genBtn.addEventListener('click', () => launchGenerate(
+        artistGenre
+          ? { genre: artistGenre, label: a.name, seedArtistName: a.name }
+          : { label: a.name, seedArtistName: a.name }
+      ));
+
+      artistListEl.append(el('div', { class: 'artist-row' },
+        el('span', { class: 'artist-name' }, a.name),
+        genreEl,
+        el('div', { class: 'artist-row-actions' }, genBtn),
+      ));
+    }
+  }
+
+  const searchInp = el('input', { type: 'text', placeholder: 'Filter by artist or genre…' });
+  searchInp.addEventListener('input', updateList);
+
+  // Initial render
+  updateList();
+
+  // Stats
+  const totalG = sortedGenres.length;
+  const totalA = sortedArtists.length;
+  const [topG, topIds] = sortedGenres[0] || ['—', []];
+
+  return el('div', {},
+    el('div', { class: 'stats-row' },
+      el('div', { class: 'stat-card' },
+        el('div', { class: 'stat-label' }, 'unique genres'),
+        el('div', { class: 'stat-value' }, String(totalG)),
+      ),
+      el('div', { class: 'stat-card' },
+        el('div', { class: 'stat-label' }, 'artists mapped'),
+        el('div', { class: 'stat-value' }, String(totalA)),
+      ),
+      el('div', { class: 'stat-card' },
+        el('div', { class: 'stat-label' }, 'top genre'),
+        el('div', { class: 'stat-value sm-val' }, `${topG} (${topIds.length})`),
+      ),
+    ),
+
+    searchInp,
+
+    el('p', { class: 'sm', style: 'margin:12px 0 6px;color:var(--text2)' }, 'click a genre to filter · click ▶ on an artist to generate'),
+    el('div', { class: 'card' }, cloudEl),
+    genreActionBar,
+
+    el('div', { class: 'card', style: 'margin-top:8px' },
+      countLabelEl,
+      artistListEl,
+    ),
+  );
+}
+
+// ── Render: main app ──────────────────────────────────────────────────────────
+function renderApp() {
+  const TABS = [
+    { id: 'generate', label: 'Generate Playlist' },
+    { id: 'explore',  label: 'Explore'           },
+    { id: 'settings', label: 'Settings'          },
+  ];
+
+  let tabContent;
+  if      (activeTab === 'generate') tabContent = renderGenerateTab();
+  else if (activeTab === 'explore')  tabContent = renderExploreTab();
+  else                               tabContent = renderSettingsTab();
+
+  return el('div', { class: 'main' },
+    el('div', { class: 'tabs' },
+      ...TABS.map(t => el('button', {
+        class: `tab${activeTab === t.id ? ' active' : ''}`,
+        onClick: () => { if (!isBusy) { activeTab = t.id; render(); } },
+      }, t.label))
+    ),
+    tabContent,
+  );
+}
+
+// ── Root render ───────────────────────────────────────────────────────────────
+function render() {
+  const root = document.getElementById('app');
+  root.innerHTML = '';
+  root.append(renderHeader());
+  root.append(!isLoggedIn() ? renderSetup() : renderApp());
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+(async () => {
+  const params = new URLSearchParams(window.location.search);
+  const code   = params.get('code');
+  const error  = params.get('error');
+
+  if (error) {
+    alert('Spotify returned an error: ' + error);
+    window.history.replaceState({}, '', window.location.pathname);
+  } else if (code) {
+    try {
+      await handleCallback(code);
+      try {
+        const me = await api.get('/me');
+        localStorage.setItem(K.USER_NAME, me.display_name || me.id);
+      } catch (_) {}
+    } catch (e) {
+      alert('Login failed: ' + e.message);
+    }
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

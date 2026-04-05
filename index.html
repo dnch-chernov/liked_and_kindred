@@ -89,7 +89,8 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .btn-sm { padding: 6px 12px; font-size: 12px; }
 
 /* ── Inputs ────────────────────────────────────────────────────────────────── */
-input[type="text"] {
+input[type="text"],
+input[type="number"] {
   font-family:  var(--font);
   font-size:    14px;
   padding:      9px 12px;
@@ -101,7 +102,8 @@ input[type="text"] {
   outline:      none;
   transition:   border-color .14s;
 }
-input[type="text"]:focus { border-color: var(--accent); }
+input[type="text"]:focus,
+input[type="number"]:focus { border-color: var(--accent); }
 
 /* ── Layout ────────────────────────────────────────────────────────────────── */
 #app { min-height: 100vh; display: flex; flex-direction: column; }
@@ -489,7 +491,7 @@ function getGenSettings() {
     perArtist   : parseInt(localStorage.getItem(K.PER_ARTIST)  || '2'),
     histDays    : parseInt(localStorage.getItem(K.HIST_DAYS)   || '30'),
     playlistReuse: (localStorage.getItem(K.PL_REUSE) || 'reuse') === 'reuse',
-    regionOnly  : localStorage.getItem(K.REGION_ONLY) === 'true',
+    regionOnly  : localStorage.getItem(K.REGION_ONLY) !== 'false', // default on
   };
 }
 
@@ -1426,13 +1428,31 @@ function renderSettingsTab() {
   // Kindred % slider
   const kindredValEl = el('span', { class: 'slider-val' }, `${Math.round(s.kindredPct * 100)}%`);
   const kindredSlider = el('input', {
-    type: 'range', min: '0', max: '100', value: String(Math.round(s.kindredPct * 100)),
-    onInput: (e) => { kindredValEl.textContent = `${e.target.value}%`; },
+    type: 'range', min: '0', max: '100', step: '10', value: String(Math.round(s.kindredPct * 100)),
+    onInput: (e) => {
+      kindredValEl.textContent = `${e.target.value}%`;
+      localStorage.setItem(K.KINDRED_PCT, e.target.value);
+    },
   });
 
-  const tracksInp   = el('input', { type: 'number', class: 'setting-num', min: '2', max: '100',  value: String(s.totalTracks) });
-  const perArtistInp = el('input', { type: 'number', class: 'setting-num', min: '1', max: '10',  value: String(s.perArtist) });
-  const histDaysInp  = el('input', { type: 'number', class: 'setting-num', min: '1', max: '365', value: String(s.histDays) });
+  // perArtistInp declared first so tracksInp's handler can reference it
+  const initMaxPerArtist = Math.max(1, Math.floor(s.totalTracks / 2));
+  const perArtistInp = el('input', { type: 'number', class: 'setting-num', min: '1',
+    max: String(initMaxPerArtist), value: String(Math.min(s.perArtist, initMaxPerArtist)) });
+  perArtistInp.addEventListener('input', () => localStorage.setItem(K.PER_ARTIST, perArtistInp.value.trim()));
+
+  const tracksInp = el('input', { type: 'number', class: 'setting-num', min: '5', max: '100', value: String(s.totalTracks) });
+  tracksInp.addEventListener('input', () => {
+    const total = Math.max(5, parseInt(tracksInp.value) || 5);
+    const newMax = Math.max(1, Math.floor(total / 2));
+    perArtistInp.max = String(newMax);
+    if (parseInt(perArtistInp.value) > newMax) perArtistInp.value = String(newMax);
+    localStorage.setItem(K.PL_TRACKS, tracksInp.value.trim());
+    localStorage.setItem(K.PER_ARTIST, perArtistInp.value.trim());
+  });
+
+  const histDaysInp = el('input', { type: 'number', class: 'setting-num', min: '1', max: '365', value: String(s.histDays) });
+  histDaysInp.addEventListener('input', () => localStorage.setItem(K.HIST_DAYS, histDaysInp.value.trim()));
 
   function makeRadio(name, val, checked, label) {
     const inp = el('input', { type: 'radio', name, value: val });
@@ -1442,19 +1462,12 @@ function renderSettingsTab() {
 
   const reuseRadio  = makeRadio('plmode', 'reuse',  s.playlistReuse,  'Reuse "Liked & Kindred"');
   const createRadio = makeRadio('plmode', 'create', !s.playlistReuse, 'Create new playlist each time');
+  reuseRadio.querySelector('input').addEventListener('change',  () => localStorage.setItem(K.PL_REUSE, 'reuse'));
+  createRadio.querySelector('input').addEventListener('change', () => localStorage.setItem(K.PL_REUSE, 'create'));
 
   const regionOnlyChk = el('input', { type: 'checkbox' });
   regionOnlyChk.checked = s.regionOnly;
-
-  function saveGenSettings() {
-    localStorage.setItem(K.PL_TRACKS,   tracksInp.value.trim());
-    localStorage.setItem(K.KINDRED_PCT, kindredSlider.value);
-    localStorage.setItem(K.PER_ARTIST,  perArtistInp.value.trim());
-    localStorage.setItem(K.HIST_DAYS,   histDaysInp.value.trim());
-    localStorage.setItem(K.REGION_ONLY, regionOnlyChk.checked ? 'true' : 'false');
-    const mode = reuseRadio.querySelector('input').checked ? 'reuse' : 'create';
-    localStorage.setItem(K.PL_REUSE, mode);
-  }
+  regionOnlyChk.addEventListener('change', () => localStorage.setItem(K.REGION_ONLY, regionOnlyChk.checked ? 'true' : 'false'));
 
   const spotifyAppCard = el('div', { class: 'card' },
     el('p', { class: 'section-label' }, 'Spotify App'),
@@ -1592,9 +1605,6 @@ function renderSettingsTab() {
       })(),
     ),
 
-    el('button', { class: 'btn-primary', style: 'margin-top:4px', onClick: () => {
-      saveGenSettings(); render(); alert('Generation settings saved.');
-    }}, 'Save Generation Settings'),
   );
 
   const storedDataCard = el('div', { class: 'card' },

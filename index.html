@@ -436,6 +436,7 @@ const K = {
   THEME          : 'lk_theme',
   USER_NAME      : 'lk_user_name',
   PLAYLIST_ID    : 'lk_playlist_id',
+  LIKED_TRACKS   : 'lk_liked_tracks',  // cached liked songs from last sync
   // Generation settings
   PL_TRACKS      : 'lk_pl_tracks',    // total tracks, default 20
   KINDRED_PCT    : 'lk_kindred_pct',  // % new-discovery, default 50
@@ -457,6 +458,7 @@ let genLog          = [];
 let lastResult      = null;   // last generation result
 let genMode         = 'random'; // 'random' | 'input'
 let pendingGenerate = null;   // { genre, label } — auto-start when tab opens
+let lastGenOpts     = null;   // opts used for the last/current generation
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 (function () {
@@ -523,16 +525,16 @@ function matchArtistOrGenre(query) {
   // Exact artist
   const exactA = Object.values(artists).find(a => a.name.toLowerCase() === q);
   if (exactA) {
-    const g = exactA.genres.find(g => genreIndex[g]);
-    if (g) return { genre: g, label: exactA.name, seedArtistName: exactA.name };
+    const gs = exactA.genres.filter(g => genreIndex[g]);
+    if (gs.length) return { genre: gs[0], genres: gs, label: exactA.name, seedArtistName: exactA.name };
     return { label: exactA.name, seedArtistName: exactA.name };
   }
 
   // Partial artist
   const partA = Object.values(artists).find(a => a.name.toLowerCase().includes(q));
   if (partA) {
-    const g = partA.genres.find(g => genreIndex[g]);
-    if (g) return { genre: g, label: partA.name, seedArtistName: partA.name };
+    const gs = partA.genres.filter(g => genreIndex[g]);
+    if (gs.length) return { genre: gs[0], genres: gs, label: partA.name, seedArtistName: partA.name };
     return { label: partA.name, seedArtistName: partA.name };
   }
 
@@ -684,11 +686,28 @@ async function lastfmApiCall(method, params) {
   return await res.json();
 }
 
+// Resolves the canonical Last.fm artist name via artist.search.
+// Handles transliterated names like "Okean Elzy" → "Океан Ельзи".
+async function resolveLastfmArtistName(artistName) {
+  try {
+    const data = await lastfmApiCall('artist.search', { artist: artistName, limit: 1 });
+    const match = data?.results?.artistmatches?.artist?.[0];
+    return match?.name || artistName;
+  } catch (e) {
+    return artistName;
+  }
+}
+
 async function getGenresFromLastfm(artistName) {
   try {
-    const data = await lastfmApiCall('artist.getInfo', { artist: artistName });
+    const data = await lastfmApiCall('artist.getInfo', { artist: artistName, autocorrect: 1 });
     const tags = data?.artist?.tags?.tag || [];
-    return tags.map(t => t.name.toLowerCase()).filter(Boolean);
+    if (tags.length) return tags.map(t => t.name.toLowerCase()).filter(Boolean);
+    // No tags — artist name may be transliterated; resolve canonical name and retry
+    const canonical = await resolveLastfmArtistName(artistName);
+    if (canonical === artistName) return [];
+    const data2 = await lastfmApiCall('artist.getInfo', { artist: canonical });
+    return (data2?.artist?.tags?.tag || []).map(t => t.name.toLowerCase()).filter(Boolean);
   } catch (e) {
     console.warn('Failed to get genres from Last.fm:', e);
     return [];
@@ -697,9 +716,14 @@ async function getGenresFromLastfm(artistName) {
 
 async function getRelatedArtistsFromLastfm(artistName) {
   try {
-    const data = await lastfmApiCall('artist.getSimilar', { artist: artistName, limit: 25 });
+    const data = await lastfmApiCall('artist.getSimilar', { artist: artistName, autocorrect: 1, limit: 25 });
     const similar = data?.similarartists?.artist || [];
-    return similar.map(a => a.name).filter(Boolean);
+    if (similar.length) return similar.map(a => a.name).filter(Boolean);
+    // No results — try resolving canonical name first
+    const canonical = await resolveLastfmArtistName(artistName);
+    if (canonical === artistName) return [];
+    const data2 = await lastfmApiCall('artist.getSimilar', { artist: canonical, limit: 25 });
+    return (data2?.similarartists?.artist || []).map(a => a.name).filter(Boolean);
   } catch (e) {
     console.warn('Failed to get related artists from Last.fm:', e);
     return [];
@@ -727,20 +751,25 @@ function saveHistory(tracks) {
 async function syncLibrary(log) {
   log('Starting library sync …', 'info');
 
-  // Step 1 — unique artist IDs from liked songs
-  const artistIds = new Set();
+  // Step 1 — page liked songs: collect artist IDs + cache track objects
+  const artistIds  = new Set();
+  const likedTracks = []; // { id, name, artists: [{id, name}] }
   let offset = 0, total = 1;
   while (offset < total) {
     const page = await api.get(`/me/tracks?limit=50&offset=${offset}`);
     total = page.total;
-    for (const item of page.items)
-      for (const a of (item.track?.artists || []))
-        if (a.id) artistIds.add(a.id);
+    for (const item of page.items) {
+      const t = item.track;
+      if (!t?.id) continue;
+      for (const a of (t.artists || [])) if (a.id) artistIds.add(a.id);
+      likedTracks.push({ id: t.id, name: t.name, artists: (t.artists || []).map(a => ({ id: a.id, name: a.name })) });
+    }
     offset += page.items.length;
     log(`  Liked songs: ${Math.min(offset, total)} / ${total}`, 'dim');
     await sleep(80);
   }
-  log(`Found ${artistIds.size} unique artists in liked songs`, 'info');
+  lsSet(K.LIKED_TRACKS, likedTracks);
+  log(`Found ${artistIds.size} unique artists in ${likedTracks.length} liked songs`, 'info');
 
   // Step 2 — batch-fetch full artist objects (need genres)
   const artists = {};
@@ -827,7 +856,6 @@ function camelotDistance(fa, fb) {
 }
 
 async function fetchAudioFeatures(ids) {
-  // ids: array of track IDs (up to 100 per call)
   const featureMap = {};
   for (let i = 0; i < ids.length; i += 100) {
     const chunk = ids.slice(i, i + 100);
@@ -922,29 +950,47 @@ function pickGenre(genreIndex) {
   return genres[genres.length - 1];
 }
 
-async function getLikedForGenre(genreArtistIds, historySet, targetLiked, perArtist, log) {
-  const matched      = [];
-  const artistCounts = new Map(); // artist-name → count already included
-  let offset = 0, total = 1;
-  while (matched.length < targetLiked && offset < total) {
-    const page = await api.get(`/me/tracks?limit=50&offset=${offset}`);
-    total = page.total;
-    for (const item of page.items) {
-      const t = item.track;
-      if (!t?.id || historySet.has(t.id)) continue;
-      const aids = t.artists.map(a => a.id);
-      const ans  = t.artists.map(a => a.name.toLowerCase());
-      if (!aids.some(id => genreArtistIds.has(id))) continue;
-      // Enforce per-artist cap
-      if (ans.some(n => (artistCounts.get(n) || 0) >= perArtist)) continue;
-      matched.push(t);
-      ans.forEach(n => artistCounts.set(n, (artistCounts.get(n) || 0) + 1));
-      if (matched.length >= targetLiked) break;
-    }
-    offset += page.items.length;
-    await sleep(80);
+function getLikedForGenre(genreArtistIds, historySet, targetLiked, perArtist, activeGenres = null, genreIndex = null, initialCounts = null) {
+  const cache = lsGet(K.LIKED_TRACKS, []);
+
+  // Pre-filter: not in history, at least one artist in the genre pool
+  // Shuffle first so results aren't always biased toward most recently liked songs
+  let candidates = shuffleArray([...cache]).filter(t =>
+    t?.id && !historySet.has(t.id) &&
+    t.artists.some(a => genreArtistIds.has(a.id))
+  );
+
+  // When multiple genres are active, score each track by how many of those genres
+  // its best-matching artist covers. Reject tracks below 50% match, sort the rest high-to-low.
+  if (activeGenres && activeGenres.length > 1 && genreIndex) {
+    const artistGenreCount = new Map();
+    for (const g of activeGenres)
+      for (const aid of (genreIndex[g] || []))
+        artistGenreCount.set(aid, (artistGenreCount.get(aid) || 0) + 1);
+
+    const threshold = activeGenres.length * 0.5;
+    candidates = candidates.filter(t =>
+      Math.max(0, ...t.artists.map(ar => artistGenreCount.get(ar.id) || 0)) > threshold
+    );
+    candidates.sort((a, b) => {
+      const scoreA = Math.max(0, ...a.artists.map(ar => artistGenreCount.get(ar.id) || 0));
+      const scoreB = Math.max(0, ...b.artists.map(ar => artistGenreCount.get(ar.id) || 0));
+      return scoreB - scoreA;
+    });
   }
-  return matched;
+
+  // Pick top N respecting the perArtist cap.
+  // initialCounts lets callers carry over counts from a previous pass.
+  const matched      = [];
+  const artistCounts = new Map(initialCounts || []);
+  for (const t of candidates) {
+    if (matched.length >= targetLiked) break;
+    const ans = t.artists.map(a => a.name.toLowerCase());
+    if (ans.some(n => (artistCounts.get(n) || 0) >= perArtist)) continue;
+    matched.push(t);
+    ans.forEach(n => artistCounts.set(n, (artistCounts.get(n) || 0) + 1));
+  }
+  return { matched, artistCounts };
 }
 
 async function findNewTrack(seed, libNames, historySet, usedIds, log, regionOnly) {
@@ -1010,6 +1056,7 @@ async function clearPlaylist(playlistId) {
 async function generatePlaylist(log, opts = {}) {
   const mapData = lsGet(K.ARTIST_MAP);
   if (!mapData) throw new Error('No artist data — run "Sync Library" first.');
+  if (!lsGet(K.LIKED_TRACKS, []).length) throw new Error('No liked songs cached — run "Sync Library" first.');
 
   const { artists, genreIndex } = mapData;
   const { totalTracks, kindredPct, perArtist, playlistReuse, regionOnly } = getGenSettings();
@@ -1026,63 +1073,134 @@ async function generatePlaylist(log, opts = {}) {
   const historySet = new Set(history.map(e => e.id));
   log(`📋 Excluding ${historySet.size} recently used tracks`, 'dim');
 
-  const genreArtistIds = new Set(genreIndex[genre] || []);
-  log(`👥 ${genreArtistIds.size} library artists in this genre`, 'dim');
+  const activeGenres   = opts.genres?.length ? opts.genres : [genre];
+  const genreArtistIds = new Set(activeGenres.flatMap(g => genreIndex[g] || []));
+  const genreLabel     = activeGenres.length > 1 ? `${activeGenres.length} genres` : genre;
+  log(`👥 ${genreArtistIds.size} library artists across ${genreLabel}`, 'dim');
   const libNames = new Set(Object.values(artists).map(a => a.name.toLowerCase()));
 
   // Liked songs
+  // When generating for a specific artist, prioritise their own liked tracks first,
+  // then fill remaining slots from the broader genre pool.
   log(`🔍 Scanning for ${targetLiked} liked songs …`, 'info');
-  const liked = await getLikedForGenre(genreArtistIds, historySet, targetLiked, perArtist, log);
-  if (!liked.length) throw new Error('No liked songs found for this genre. Re-run to try a different genre.');
-  log(`Found ${liked.length} liked track(s)`, 'success');
-  for (const t of liked) log(`  ♥  ${t.artists[0].name} — ${t.name}`, 'dim');
+  let liked = [];
+  if (opts.seedArtistName) {
+    const seedLower = opts.seedArtistName.toLowerCase();
+    const seedArtistObj = Object.values(artists).find(a => a.name.toLowerCase() === seedLower);
+    if (seedArtistObj) {
+      const seedIdSet = new Set([seedArtistObj.id]);
+      const { matched: fromSeed, artistCounts: seedCounts } = getLikedForGenre(seedIdSet, historySet, targetLiked, perArtist);
+      liked = fromSeed;
+      if (fromSeed.length < targetLiked) {
+        // Fill remaining from genre pool, passing seed counts so the cap carries over
+        const usedLikedIds = new Set(fromSeed.map(t => t.id));
+        const historyPlusSeed = new Set([...historySet, ...usedLikedIds]);
+        const { matched: rest } = getLikedForGenre(genreArtistIds, historyPlusSeed, targetLiked - fromSeed.length, perArtist, activeGenres, genreIndex, seedCounts);
+        liked = [...fromSeed, ...rest];
+      }
+    } else {
+      const { matched } = getLikedForGenre(genreArtistIds, historySet, targetLiked, perArtist, activeGenres, genreIndex);
+      liked = matched;
+    }
+  } else {
+    const { matched } = getLikedForGenre(genreArtistIds, historySet, targetLiked, perArtist, activeGenres, genreIndex);
+    liked = matched;
+  }
 
-  // New discoveries
-  log(`🔎 Finding ${targetNew} new discoveries …`, 'info');
+  if (!liked.length) {
+    log(`⚠ No liked songs available — filling entirely with new discoveries`, 'warn');
+  } else {
+    log(`Found ${liked.length} liked track(s)`, 'success');
+    for (const t of liked) log(`  ♥  ${t.artists[0].name} — ${t.name}`, 'dim');
+  }
+
+  // Recalculate targetNew to fill any shortfall in liked tracks
+  const adjustedTargetNew = totalTracks - liked.length;
+  if (adjustedTargetNew !== targetNew) {
+    log(`  Adjusting new discoveries: ${targetNew} → ${adjustedTargetNew} to fill ${totalTracks} total`, 'dim');
+  }
+
+  // New discoveries — cycle through seeds round-robin until adjustedTargetNew is met
+  log(`🔎 Finding ${adjustedTargetNew} new discoveries …`, 'info');
   const usedIds  = new Set([...historySet, ...liked.map(t => t.id)]);
   const newTracks = [];
-  for (const seed of liked) {
-    if (newTracks.length >= targetNew) break;
+
+  // When generating for a specific artist, seed discoveries exclusively from that artist
+  // so that Last.fm similarity radiates from them, not from unrelated genre pool tracks.
+  const discoverySeeds = await (async () => {
+    const seedArtistLower = opts.seedArtistName?.toLowerCase();
+
+    if (seedArtistLower) {
+      // Preferred: liked tracks by the seed artist
+      const fromLiked = liked.filter(t => t.artists.some(a => a.name.toLowerCase() === seedArtistLower));
+      if (fromLiked.length) return fromLiked;
+
+      // Fallback: top tracks of the seed artist from Spotify
+      log(`  No liked tracks for ${opts.seedArtistName} — fetching their top tracks as seeds`, 'dim');
+      const artistObj = Object.values(artists).find(a => a.name.toLowerCase() === seedArtistLower);
+      if (artistObj) {
+        try {
+          const tops = (await api.get(`/artists/${artistObj.id}/top-tracks?market=from_token`)).tracks || [];
+          const seeds = [];
+          for (const t of tops) {
+            if (t?.id && !historySet.has(t.id) && !usedIds.has(t.id)) {
+              seeds.push(t);
+              usedIds.add(t.id);
+            }
+          }
+          if (seeds.length) return seeds;
+        } catch (_) {}
+      }
+    }
+
+    // No specific artist — seed from liked tracks, or fall back to genre artist top tracks
+    if (liked.length > 0) return liked;
+    const seeds = [];
+    for (const aid of [...genreArtistIds].slice(0, 5)) {
+      try {
+        const tops = (await api.get(`/artists/${aid}/top-tracks?market=from_token`)).tracks || [];
+        const t = tops.find(t => t?.id && !historySet.has(t.id) && !usedIds.has(t.id));
+        if (t) { seeds.push(t); usedIds.add(t.id); }
+      } catch (_) {}
+      await sleep(80);
+    }
+    return seeds;
+  })();
+  if (!discoverySeeds.length) throw new Error('No tracks found for this genre. Try syncing your library or picking a different genre.');
+  // Cap attempts to avoid infinite loops when a genre is very sparse
+  const maxAttempts = adjustedTargetNew * 4;
+  let seedIdx = 0, attempts = 0, consecutiveMisses = 0;
+  while (newTracks.length < adjustedTargetNew && attempts < maxAttempts && consecutiveMisses < discoverySeeds.length * 2) {
+    const seed = discoverySeeds[seedIdx % discoverySeeds.length];
+    seedIdx++;
+    attempts++;
     const t = await findNewTrack(seed, libNames, historySet, usedIds, log, regionOnly);
     if (t) {
       newTracks.push(t);
       usedIds.add(t.id);
+      consecutiveMisses = 0;
       log(`  ✨ ${t.artists[0].name} — ${t.name}`, 'dim');
     } else {
-      log(`  ⚠ No match for: ${seed.artists[0].name} — ${seed.name}`, 'warn');
+      consecutiveMisses++;
+      if (seedIdx % liked.length === 0)
+        log(`  ⚠ No match for: ${seed.artists[0].name} — ${seed.name}`, 'warn');
     }
     await sleep(120);
   }
 
-  if (perArtist > 1) {
-    const seedArtist = opts.seedArtistName?.toLowerCase();
-    if (seedArtist) {
-      const idx = liked.findIndex(t => t.artists.some(a => a.name.toLowerCase() === seedArtist));
-      if (idx > 0) liked.unshift(liked.splice(idx, 1)[0]);
-      const first = liked.shift();
-      shuffleArray(liked);
-      liked.unshift(first);
-    } else {
-      shuffleArray(liked);
-    }
-    shuffleArray(newTracks);
-  } else if (opts.seedArtistName) {
-    const seedArtist = opts.seedArtistName.toLowerCase();
-    const idx = liked.findIndex(t => t.artists.some(a => a.name.toLowerCase() === seedArtist));
-    if (idx > 0) liked.unshift(liked.splice(idx, 1)[0]);
-  }
-
-  // Interleave liked / new
-  let playlist = [];
-  for (let i = 0; i < Math.max(liked.length, newTracks.length); i++) {
-    if (i < liked.length)     playlist.push({ ...liked[i],     _type: 'liked' });
-    if (i < newTracks.length) playlist.push({ ...newTracks[i], _type: 'new'   });
-  }
+  // Combine all tracks into one pool — flow ordering will arrange them
+  let playlist = [
+    ...liked.map(t => ({ ...t, _type: 'liked' })),
+    ...newTracks.map(t => ({ ...t, _type: 'new' })),
+  ];
+  if (!playlist.length) throw new Error('Could not find any tracks for this genre. Try a different genre or shorten your no-repeat window.');
 
   // Flow ordering
   const flow = getFlowSettings();
   let featureMap = {};
-  if (flow.curve !== 'off') {
+  if (flow.curve === 'off') {
+    shuffleArray(playlist);
+  } else {
     log(`🌊 Fetching audio features for flow ordering …`, 'info');
     featureMap = await fetchAudioFeatures(playlist.map(t => t.id));
     const fetched = Object.keys(featureMap).length;
@@ -1090,6 +1208,8 @@ async function generatePlaylist(log, opts = {}) {
     if (fetched > 0) {
       playlist = orderByFlow(playlist, featureMap, flow);
       log(`  Ordered with curve: ${flow.curve}${flow.useKey ? ' · key compat' : ''}${flow.useTempo ? ' · tempo' : ''}`, 'dim');
+    } else {
+      shuffleArray(playlist);
     }
   }
 
@@ -1277,40 +1397,13 @@ function renderGenerateTab() {
   if (pendingGenerate) {
     const opts = { ...pendingGenerate };
     pendingGenerate = null;
+    lastGenOpts = opts;
+    genMode = 'input';
     setTimeout(() => runGenerate(opts), 0);
   }
 
-  // Mode toggle
-  const modeBar = el('div', { class: 'mode-toggle' },
-    el('button', {
-      class: `mode-btn${genMode === 'random' ? ' active' : ''}`,
-      onClick: () => { genMode = 'random'; render(); },
-    }, 'Random genre'),
-    el('button', {
-      class: `mode-btn${genMode === 'input' ? ' active' : ''}`,
-      onClick: () => { genMode = 'input'; render(); },
-    }, 'By artist / genre'),
-  );
-
-  // Input mode section
-  let currentInp = null;
-  let inputSection = null;
-  if (genMode === 'input') {
-    const matchLabel = el('p', { class: 'sm', style: 'margin-top:6px;min-height:18px' });
-    const inp = el('input', { type: 'text', placeholder: 'e.g. Bonobo, trip hop, Radiohead…' });
-    inp.addEventListener('input', () => {
-      const m = matchArtistOrGenre(inp.value);
-      if (!inp.value.trim()) { matchLabel.textContent = ''; return; }
-      matchLabel.textContent  = m ? `→ genre: ${m.genre}` : 'No match in your library';
-      matchLabel.style.color  = m ? 'var(--accent)' : 'var(--danger)';
-    });
-    currentInp   = inp;
-    inputSection = el('div', { class: 'mt8' }, inp, matchLabel);
-  }
-
-  const s        = getGenSettings();
-  const pid      = getPlaylistId();
-  const plUrl    = pid ? `https://open.spotify.com/playlist/${pid}` : '#';
+  const s   = getGenSettings();
+  const pid = getPlaylistId();
   const descParts = [
     `${s.totalTracks} tracks`,
     `${Math.round(s.kindredPct * 100)}% new discoveries`,
@@ -1319,15 +1412,25 @@ function renderGenerateTab() {
     s.regionOnly ? 'region-only tracks' : null,
   ].filter(Boolean);
 
+  // Context label shown while generating
+  const genContext = isGen && lastGenOpts
+    ? (lastGenOpts.label ? `Generating for ${lastGenOpts.label}…` : 'Generating random genre…')
+    : null;
+
+  let currentInp = null;
+
   const genBtn = el('button', {
     class: 'btn-primary',
     disabled: isBusy || !mapData,
+    style: 'white-space:nowrap;flex-shrink:0',
     onClick: () => {
       if (genMode === 'input') {
         const m = matchArtistOrGenre(currentInp?.value || '');
         if (!m) { alert('No matching artist or genre found in your library.'); return; }
+        lastGenOpts = m;
         runGenerate(m);
       } else {
+        lastGenOpts = {};
         runGenerate({});
       }
     },
@@ -1336,40 +1439,91 @@ function renderGenerateTab() {
     : '▶ Generate Playlist'
   );
 
+  // Random genre checkbox — disabled while busy so user can't switch mid-generation
+  const randomChk = el('input', { type: 'checkbox' });
+  randomChk.checked  = genMode === 'random';
+  randomChk.disabled = isBusy;
+  randomChk.addEventListener('change', () => {
+    genMode = randomChk.checked ? 'random' : 'input';
+    render();
+  });
+
+  // Text input — show current artist/genre label if known; disabled when random
+  const isRandom = genMode === 'random';
+  const matchLabel = el('p', { class: 'sm', style: 'margin-top:6px;min-height:18px' });
+  const inputValue = !isRandom && lastGenOpts?.label ? lastGenOpts.label : '';
+  const inp = el('input', { type: 'text',
+    placeholder: isRandom ? 'Random genre selected' : 'e.g. Bonobo, trip hop, Radiohead…',
+    value: inputValue,
+    style: 'flex:1',
+  });
+  inp.disabled = isRandom;
+  if (inputValue) {
+    matchLabel.textContent = lastGenOpts.genres
+      ? `→ ${lastGenOpts.genres.join(', ')}`
+      : lastGenOpts.genre ? `→ ${lastGenOpts.genre}` : '';
+    matchLabel.style.color = 'var(--accent)';
+  }
+  inp.addEventListener('input', () => {
+    const m = matchArtistOrGenre(inp.value);
+    if (!inp.value.trim()) { matchLabel.textContent = ''; return; }
+    matchLabel.textContent = m ? `→ ${m.genres ? m.genres.join(', ') : m.genre}` : 'No match in your library';
+    matchLabel.style.color = m ? 'var(--accent)' : 'var(--danger)';
+  });
+  currentInp = inp;
+
+  // Log toggle
+  let logVisible = isGen;
+  const logToggleBtn = el('button', { class: 'btn-ghost btn-sm', style: 'margin-top:10px' },
+    logVisible ? 'Hide log' : 'Show log');
+  const logWrap = el('div', { style: logVisible ? '' : 'display:none' },
+    genLog.length ? makeLogDiv('gen-log', genLog) : null,
+  );
+  logToggleBtn.addEventListener('click', () => {
+    logVisible = !logVisible;
+    logWrap.style.display = logVisible ? '' : 'none';
+    logToggleBtn.textContent = logVisible ? 'Hide log' : 'Show log';
+  });
+
   return el('div', {},
     el('div', { class: 'card' },
       el('p', { class: 'card-title' }, 'Generate Playlist'),
       el('p', { class: 'card-desc' },
-        'Finds liked songs matching a genre, discovers similar tracks from outside your library, then rebuilds ',
-        el('a', { href: plUrl, target: '_blank' }, 'Liked & Kindred'),
+        'Finds liked songs matching a genre and discovers similar tracks from outside your library. ',
+        descParts.join(' · '), ' · ',
+        el('span', { style: 'color:var(--text2)' }, `${history.length} in history`),
         '.'
       ),
       !mapData
         ? el('p', { style: 'color:var(--danger);font-size:13px;margin-bottom:10px' },
             '⚠ Sync your library first.')
         : null,
-      modeBar,
-      inputSection,
-      el('div', { class: 'row', style: 'margin-top:12px' },
-        el('div', {},
-          el('span', { class: 'sm' }, descParts.join(' · ')),
-          el('br'),
-          el('span', { class: 'sm' }, `${history.length} tracks in recent history`),
-        ),
+      el('div', { style: 'display:flex;gap:8px;align-items:center;margin-bottom:6px' },
+        inp,
         genBtn,
       ),
-      genLog.length ? makeLogDiv('gen-log', genLog) : null,
+      el('div', { style: 'display:flex;align-items:center;gap:6px' },
+        randomChk,
+        el('label', { style: 'font-size:13px;cursor:pointer', onClick: () => { randomChk.checked = !randomChk.checked; randomChk.dispatchEvent(new Event('change')); } }, 'Random genre'),
+      ),
+      matchLabel,
     ),
 
     lastResult ? el('div', { class: 'card' },
-      el('p', { class: 'card-title' }, `Result — ${lastResult.label || lastResult.genre}`),
+      el('div', { style: 'display:flex;align-items:center;justify-content:space-between;margin-bottom:4px' },
+        el('p', { class: 'card-title', style: 'margin-bottom:0' }, `Result — ${lastResult.label || lastResult.genre}`),
+        el('a', {
+          href: `https://open.spotify.com/playlist/${lastResult.playlistId}`,
+          target: '_blank',
+          style: 'font-size:13px;font-weight:500;white-space:nowrap',
+        }, 'Open in Spotify ↗'),
+      ),
       el('div', {},
         ...lastResult.playlist.map((t, i) => {
           const f = lastResult.featureMap?.[t.id];
           let energyEl = null;
           if (f) {
             const pct   = Math.round(f.energy * 100);
-            // Hue: 160 (green/cool) → 30 (warm/orange) as energy rises
             const hue   = Math.round(160 - f.energy * 130);
             const fill  = el('div', { class: 'track-energy-fill',
               style: `width:${pct}%;background:hsl(${hue},65%,48%)` });
@@ -1388,7 +1542,9 @@ function renderGenerateTab() {
             energyEl,
           );
         })
-      )
+      ),
+      genLog.length ? el('div', { style: 'margin-top:12px;border-top:1px solid var(--border);padding-top:10px' },
+        logToggleBtn, logWrap) : null,
     ) : null,
   );
 }
@@ -1750,15 +1906,16 @@ function renderExploreTab() {
 
       // Determine a genre to use when generating for this artist.
       // If the artist has no genre data, fall back to random genre selection.
-      const artistGenre = a.genres.find(g => genreIndex[g]) || null;
+      const artistGenres = a.genres.filter(g => genreIndex[g]);
+      const artistGenre  = artistGenres[0] || null;
       const genBtn = el('button', { class: 'btn-gen' }, '▶');
       genBtn.title = artistGenre
-        ? `Generate playlist for ${a.name} (${artistGenre})`
+        ? `Generate playlist for ${a.name} (${artistGenres.join(', ')})`
         : `Generate playlist (no genre data for ${a.name} — will pick random genre)`;
       genBtn.style.opacity = artistGenre ? '1' : '0.5';
       genBtn.addEventListener('click', () => launchGenerate(
         artistGenre
-          ? { genre: artistGenre, label: a.name, seedArtistName: a.name }
+          ? { genre: artistGenre, genres: artistGenres, label: a.name, seedArtistName: a.name }
           : { label: a.name, seedArtistName: a.name }
       ));
 

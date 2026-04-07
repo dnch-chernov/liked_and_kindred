@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -166,33 +166,6 @@ input[type="number"]:focus { border-color: var(--accent); }
 /* ── Main app ──────────────────────────────────────────────────────────────── */
 .main { flex: 1; max-width: 800px; margin: 0 auto; padding: 28px 24px; width: 100%; }
 
-/* Tabs */
-.tabs {
-  display:       flex;
-  gap:           2px;
-  background:    var(--surface2);
-  border-radius: 10px;
-  padding:       4px;
-  margin-bottom: 24px;
-}
-.tab {
-  flex:          1;
-  padding:       8px 14px;
-  border-radius: 7px;
-  background:    transparent;
-  color:         var(--text2);
-  font-weight:   500;
-  font-size:     13px;
-  border:        none;
-}
-.tab:hover { color: var(--text); }
-.tab.active {
-  background:  var(--surface);
-  color:       var(--text);
-  font-weight: 600;
-  box-shadow:  var(--shadow);
-}
-
 /* Cards */
 .card {
   background:    var(--surface);
@@ -203,6 +176,15 @@ input[type="number"]:focus { border-color: var(--accent); }
 }
 .card-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
 .card-desc  { color: var(--text2); font-size: 13px; margin-bottom: 16px; line-height: 1.6; }
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.card-head .card-title { margin-bottom: 0; }
+.card-count { font-size: 12px; color: var(--text2); font-weight: 600; }
 
 /* Status badges */
 .badge {
@@ -294,6 +276,71 @@ input[type="number"]:focus { border-color: var(--accent); }
 .mt8  { margin-top:  8px; }
 .mt14 { margin-top: 14px; }
 .gap8 { display: flex; gap: 8px; flex-wrap: wrap; }
+.genre-pill-row { display: flex; gap: 8px; flex-wrap: wrap; min-height: 32px; margin-bottom: 14px; }
+.genre-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1;
+}
+.genre-pill button {
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+}
+.genre-pill-empty { color: var(--text2); font-size: 12px; align-self: center; }
+.gen-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+.gen-progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.gen-progress-label {
+  font-size: 13px;
+  color: var(--text);
+}
+.gen-progress-pct {
+  font-size: 12px;
+  color: var(--text2);
+  font-weight: 600;
+}
+.gen-progress-bar {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface2);
+  overflow: hidden;
+}
+.gen-progress-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #22c55e 0%, #84cc16 55%, #eab308 100%);
+  transition: width .18s ease;
+}
+.gen-progress-note {
+  font-size: 12px;
+  color: var(--text2);
+}
+.gen-actions {
+  margin-top: 8px;
+}
 
 /* ── Explore tab ───────────────────────────────────────────────────────────── */
 .stats-row {
@@ -368,14 +415,33 @@ input[type="number"]:focus { border-color: var(--accent); }
 .setting-row:last-child { border-bottom: none; }
 .setting-row label { font-size: 13px; font-weight: 500; }
 .setting-row .sub-label { font-size: 12px; color: var(--text2); margin-top: 2px; }
-.setting-num { width: 72px; text-align: center; padding: 6px 8px; }
+.setting-num,
+input[type="number"].setting-num {
+  width: 96px;
+  flex: 0 0 96px;
+  text-align: center;
+  padding: 6px 8px;
+}
 .radio-row { display: flex; gap: 16px; }
 .radio-row label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; font-weight: 400; }
 
 /* Energy bar (flow visualisation) */
-.track-energy {
+.track-flow {
   flex-shrink: 0;
-  width: 40px;
+  width: 126px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-end;
+  text-align: right;
+}
+.track-flow-line {
+  font-size: 11px;
+  color: var(--text2);
+  line-height: 1.2;
+}
+.track-energy {
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -418,6 +484,9 @@ input[type="number"]:focus { border-color: var(--accent); }
 const DEFAULT_PLAYLIST_ID = '';
 const CLIENT_ID = '6d3ee4dac7564390b28c3e5d85905a44';
 const LASTFM_API_KEY = '345277cd160d3b9f859c6d4713b00a8b'; // Replace with your Last.fm API key
+const RECCOBEATS_AUDIO_FEATURES_URL = 'https://api.reccobeats.com/v1/audio-features';
+const RECCOBEATS_MIN_INTERVAL_MS = 1000;
+const RECCOBEATS_BATCH_SIZE = 50;
 const SCOPES = [
   'user-library-read',
   'user-follow-read',
@@ -451,18 +520,16 @@ const K = {
 };
 
 // ── App state ─────────────────────────────────────────────────────────────────
-let activeTab       = 'generate';
+let activeTab       = 'main';
 let isBusy          = false;
-let syncLog         = [];
-let genLog          = [];
+let syncProgress    = null;   // { pct, action, note }
 let lastResult      = null;   // last generation result
-let genMode         = 'random'; // 'random' | 'input'
-let pendingGenerate = null;   // { genre, label } — auto-start when tab opens
-let lastGenOpts     = null;   // opts used for the last/current generation
+let genProgress     = null;   // { pct, action, note }
+let lastReccoBeatsAt = 0;
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 (function () {
-  document.documentElement.dataset.theme = localStorage.getItem(K.THEME) || 'light';
+  document.documentElement.dataset.theme = localStorage.getItem(K.THEME) || 'dark';
 })();
 
 function toggleTheme() {
@@ -503,42 +570,6 @@ function getFlowSettings() {
     useKey  : localStorage.getItem(K.FLOW_KEY)    !== 'false',
     useTempo: localStorage.getItem(K.FLOW_TEMPO)  !== 'false',
   };
-}
-
-// Match a user-typed query to a genre or artist in the library.
-// Returns { genre, label } or null.
-function matchArtistOrGenre(query) {
-  const mapData = lsGet(K.ARTIST_MAP);
-  if (!mapData) return null;
-  const q = query.trim().toLowerCase();
-  if (!q) return null;
-  const { artists, genreIndex } = mapData;
-
-  // Exact genre
-  const exactG = Object.keys(genreIndex).find(g => g.toLowerCase() === q);
-  if (exactG) return { genre: exactG, label: exactG };
-
-  // Partial genre
-  const partG = Object.keys(genreIndex).find(g => g.toLowerCase().includes(q));
-  if (partG) return { genre: partG, label: partG };
-
-  // Exact artist
-  const exactA = Object.values(artists).find(a => a.name.toLowerCase() === q);
-  if (exactA) {
-    const gs = exactA.genres.filter(g => genreIndex[g]);
-    if (gs.length) return { genre: gs[0], genres: gs, label: exactA.name, seedArtistName: exactA.name };
-    return { label: exactA.name, seedArtistName: exactA.name };
-  }
-
-  // Partial artist
-  const partA = Object.values(artists).find(a => a.name.toLowerCase().includes(q));
-  if (partA) {
-    const gs = partA.genres.filter(g => genreIndex[g]);
-    if (gs.length) return { genre: gs[0], genres: gs, label: partA.name, seedArtistName: partA.name };
-    return { label: partA.name, seedArtistName: partA.name };
-  }
-
-  return null;
 }
 
 // ── PKCE helpers ──────────────────────────────────────────────────────────────
@@ -748,15 +779,18 @@ function saveHistory(tracks) {
 }
 
 // ── Library sync ──────────────────────────────────────────────────────────────
-async function syncLibrary(log) {
+async function syncLibrary(log, progress = () => {}) {
   log('Starting library sync …', 'info');
+  progress(2, 'Taking a quick inventory of your library.', 'Starting with your liked songs.');
 
   // Step 1 — page liked songs: collect artist IDs + cache track objects
   const artistIds  = new Set();
   const likedTracks = []; // { id, name, artists: [{id, name}] }
   let offset = 0, total = 1;
+  let likedRequests = 0;
   while (offset < total) {
     const page = await api.get(`/me/tracks?limit=50&offset=${offset}`);
+    likedRequests++;
     total = page.total;
     for (const item of page.items) {
       const t = item.track;
@@ -765,6 +799,9 @@ async function syncLibrary(log) {
       likedTracks.push({ id: t.id, name: t.name, artists: (t.artists || []).map(a => ({ id: a.id, name: a.name })) });
     }
     offset += page.items.length;
+    const likedReqTotal = Math.max(1, Math.ceil(total / 50));
+    const likedPct = 2 + Math.round(((Math.min(offset, total) + likedRequests) / Math.max(1, total + likedReqTotal)) * 33);
+    progress(Math.min(35, likedPct), 'Taking a quick inventory of your library.', `Seen ${Math.min(offset, total)} of ${total} liked songs across ${likedRequests} request${likedRequests === 1 ? '' : 's'}.`);
     log(`  Liked songs: ${Math.min(offset, total)} / ${total}`, 'dim');
     await sleep(80);
   }
@@ -774,13 +811,20 @@ async function syncLibrary(log) {
   // Step 2 — batch-fetch full artist objects (need genres)
   const artists = {};
   const idList  = [...artistIds];
+  let artistDetailsDone = 0;
+  let artistBatchRequests = 0;
   for (let i = 0; i < idList.length; i += 50) {
     const result = await api.get(`/artists?ids=${idList.slice(i, i + 50).join(',')}`);
+    artistBatchRequests++;
     for (const a of (result.artists || []))
       if (a) {
         const genres = await getGenresFromLastfm(a.name);
         await sleep(250);
         artists[a.id] = { id: a.id, name: a.name, genres, source: 'liked' };
+        artistDetailsDone++;
+        const detailReqTotal = Math.max(1, Math.ceil(idList.length / 50));
+        const artistPct = 35 + Math.round(((artistDetailsDone + artistBatchRequests) / Math.max(1, idList.length + detailReqTotal)) * 45);
+        progress(Math.min(80, artistPct), 'Matching artists to their genres.', `Tagged ${artistDetailsDone} of ${idList.length} artists so far.`);
       }
     log(`  Artist details: ${Math.min(i + 50, idList.length)} / ${idList.length}`, 'dim');
     await sleep(80);
@@ -788,9 +832,11 @@ async function syncLibrary(log) {
 
   // Step 3 — followed artists (already include genres)
   let after = undefined, followCount = 0;
+  let followRequests = 0;
   while (true) {
     const url  = `/me/following?type=artist&limit=50${after ? '&after=' + after : ''}`;
     const page = await api.get(url);
+    followRequests++;
     const items = page.artists?.items || [];
     if (!items.length) break;
     for (const a of items) {
@@ -804,6 +850,9 @@ async function syncLibrary(log) {
       }
     }
     followCount += items.length;
+    const followUnits = followCount + followRequests * 5;
+    const followPct = 80 + Math.round(15 * (followUnits / Math.max(50, followUnits + 10)));
+    progress(Math.min(95, followPct), 'Checking your followed artists too.', `Looked through ${followCount} followed artists over ${followRequests} request${followRequests === 1 ? '' : 's'}.`);
     log(`  Followed artists: ${followCount}`, 'dim');
     after = page.artists?.cursors?.after;
     if (!after) break;
@@ -811,6 +860,7 @@ async function syncLibrary(log) {
   }
 
   // Step 4 — build genre index
+  progress(97, 'Tying the map together.', 'Grouping artists under the genres they belong to.');
   const genreIndex = {};
   for (const a of Object.values(artists))
     for (const g of a.genres) {
@@ -820,13 +870,14 @@ async function syncLibrary(log) {
 
   lsSet(K.ARTIST_MAP, { artists, genreIndex, lastSync: new Date().toISOString() });
   log(`✓ ${Object.keys(artists).length} artists · ${Object.keys(genreIndex).length} genres saved`, 'success');
+  progress(100, 'Library sync is done.', `Saved ${Object.keys(artists).length} artists across ${Object.keys(genreIndex).length} genres.`);
   return { artists, genreIndex };
 }
 
 // ── Flow engine ───────────────────────────────────────────────────────────────
 
 // Camelot Wheel: CAMELOT[key][mode] → { num: 1-12, l: 'A'|'B' }
-// Spotify key: 0=C 1=C# 2=D 3=D# 4=E 5=F 6=F# 7=G 8=G# 9=A 10=A# 11=B
+// ReccoBeats key: 0=C 1=C# 2=D 3=D# 4=E 5=F 6=F# 7=G 8=G# 9=A 10=A# 11=B
 // mode: 0=minor(A)  1=major(B)
 const CAMELOT = [
   [{num:5,l:'A'},{num:8,l:'B'}],   // C
@@ -842,6 +893,18 @@ const CAMELOT = [
   [{num:3,l:'A'},{num:6,l:'B'}],   // A#/Bb
   [{num:10,l:'A'},{num:1,l:'B'}],  // B
 ];
+const PITCH_CLASSES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+function camelotLabel(f) {
+  if (!f || f.key < 0 || f.key > 11 || (f.mode !== 0 && f.mode !== 1)) return null;
+  const slot = CAMELOT[f.key]?.[f.mode];
+  return slot ? `${slot.num}${slot.l}` : null;
+}
+
+function musicalKeyLabel(f) {
+  if (!f || f.key < 0 || f.key > 11) return null;
+  return `${PITCH_CLASSES[f.key]} ${f.mode === 0 ? 'minor' : 'major'}`;
+}
 
 function camelotDistance(fa, fb) {
   // Returns 0 (compatible), 0.15 (adjacent), or 0.35 (clash)
@@ -855,19 +918,52 @@ function camelotDistance(fa, fb) {
   return 0.35;                             // everything else → penalise
 }
 
-async function fetchAudioFeatures(ids) {
+async function fetchAudioFeatures(ids, onBatch = null) {
   const featureMap = {};
-  for (let i = 0; i < ids.length; i += 100) {
-    const chunk = ids.slice(i, i + 100);
+  function extractSpotifyTrackId(href) {
+    const match = typeof href === 'string' ? href.match(/\/track\/([A-Za-z0-9]+)(?:\?|$)/) : null;
+    return match ? match[1] : null;
+  }
+
+  async function fetchReccoBeatsBatch(chunk, attempt = 0) {
+    const wait = RECCOBEATS_MIN_INTERVAL_MS - (Date.now() - lastReccoBeatsAt);
+    if (wait > 0) await sleep(wait);
+    lastReccoBeatsAt = Date.now();
+
+    const res = await fetch(`${RECCOBEATS_AUDIO_FEATURES_URL}?ids=${encodeURIComponent(chunk.join(','))}`);
+    if ((res.status === 429 || res.status === 503) && attempt < 4) {
+      const retryAfter = parseFloat(res.headers.get('Retry-After') || '0');
+      const backoffMs = retryAfter > 0 ? Math.ceil(retryAfter * 1000) : Math.min(8000, 1000 * Math.pow(2, attempt));
+      await sleep(Math.max(RECCOBEATS_MIN_INTERVAL_MS, backoffMs));
+      return fetchReccoBeatsBatch(chunk, attempt + 1);
+    }
+    if (!res.ok) throw new Error(`ReccoBeats ${res.status}: ${await res.text()}`);
+    return res.json();
+  }
+
+  const totalBatches = Math.max(1, Math.ceil(ids.length / RECCOBEATS_BATCH_SIZE));
+  for (let i = 0; i < ids.length; i += RECCOBEATS_BATCH_SIZE) {
+    const chunk = ids.slice(i, i + RECCOBEATS_BATCH_SIZE);
     try {
-      const res = await api.get(`/audio-features?ids=${chunk.join(',')}`);
-      for (const f of (res.audio_features || [])) {
-        if (f?.id) featureMap[f.id] = f;
+      const res = await fetchReccoBeatsBatch(chunk);
+      for (const item of (res.content || [])) {
+        const spotifyId = extractSpotifyTrackId(item?.href);
+        if (!spotifyId) continue;
+        featureMap[spotifyId] = {
+          id: spotifyId,
+          energy: Number.isFinite(Number(item.energy)) ? Number(item.energy) : 0.5,
+          valence: Number.isFinite(Number(item.valence)) ? Number(item.valence) : 0.5,
+          tempo: Number.isFinite(Number(item.tempo)) ? Number(item.tempo) : 120,
+          key: Number.isInteger(item.key) ? item.key : (Number.isInteger(Number(item.key)) ? Number(item.key) : -1),
+          mode: Number.isInteger(item.mode) ? item.mode : (Number.isInteger(Number(item.mode)) ? Number(item.mode) : 1),
+        };
       }
     } catch (e) {
-      console.warn('audio-features fetch failed:', e.message);
+      console.warn('ReccoBeats audio-features fetch failed:', e.message);
     }
+    if (onBatch) onBatch(Math.floor(i / RECCOBEATS_BATCH_SIZE) + 1, totalBatches);
   }
+
   return featureMap;
 }
 
@@ -1053,19 +1149,26 @@ async function clearPlaylist(playlistId) {
   return ids.length;
 }
 
-async function generatePlaylist(log, opts = {}) {
+async function generatePlaylist(log, opts = {}, progress = () => {}) {
   const mapData = lsGet(K.ARTIST_MAP);
   if (!mapData) throw new Error('No artist data — run "Sync Library" first.');
   if (!lsGet(K.LIKED_TRACKS, []).length) throw new Error('No liked songs cached — run "Sync Library" first.');
 
   const { artists, genreIndex } = mapData;
   const { totalTracks, kindredPct, perArtist, playlistReuse, regionOnly } = getGenSettings();
+  const flow = getFlowSettings();
   const targetNew   = Math.round(totalTracks * kindredPct);
   const targetLiked = totalTracks - targetNew;
+  const featureBatches = flow.curve === 'off' ? 0 : Math.max(1, Math.ceil(totalTracks / RECCOBEATS_BATCH_SIZE));
+  const progressTotal = Math.max(1, totalTracks + featureBatches + 4);
+  const clampProgress = (value) => Math.max(2, Math.min(99, Math.round((value / progressTotal) * 100)));
+  const trackProgress = (tracksDone, action, note = '') => progress(clampProgress(Math.min(totalTracks, tracksDone)), action, note);
+  const requestProgress = (requestUnits, action, note = '') => progress(clampProgress(totalTracks + requestUnits), action, note);
 
   // Genre selection
   const genre = opts.genre || pickGenre(genreIndex);
   const label = opts.label && opts.label !== genre ? `${opts.label} → ${genre}` : genre;
+  progress(2, 'Getting the shape of this playlist together.', opts.seedArtistName ? `Starting from ${opts.seedArtistName} and the genres around them.` : `Starting from ${label}.`);
   log(`🎵 Genre: ${label}`, 'info');
   log(`📐 ${targetLiked} liked + ${targetNew} new = ${totalTracks} tracks · max ${perArtist}/artist`, 'dim');
 
@@ -1082,6 +1185,7 @@ async function generatePlaylist(log, opts = {}) {
   // Liked songs
   // When generating for a specific artist, prioritise their own liked tracks first,
   // then fill remaining slots from the broader genre pool.
+  trackProgress(0, 'Pulling together the tracks you already know.', opts.seedArtistName ? `Looking first for liked songs by ${opts.seedArtistName}.` : `Looking for about ${targetLiked} liked tracks.`);
   log(`🔍 Scanning for ${targetLiked} liked songs …`, 'info');
   let liked = [];
   if (opts.seedArtistName) {
@@ -1113,6 +1217,7 @@ async function generatePlaylist(log, opts = {}) {
     log(`Found ${liked.length} liked track(s)`, 'success');
     for (const t of liked) log(`  ♥  ${t.artists[0].name} — ${t.name}`, 'dim');
   }
+  trackProgress(targetLiked, 'Liked tracks are in place.', liked.length ? `${liked.length} landed from your library.` : 'No good library matches, so this one will lean on discovery.');
 
   // Recalculate targetNew to fill any shortfall in liked tracks
   const adjustedTargetNew = totalTracks - liked.length;
@@ -1121,6 +1226,7 @@ async function generatePlaylist(log, opts = {}) {
   }
 
   // New discoveries — cycle through seeds round-robin until adjustedTargetNew is met
+  trackProgress(targetLiked, 'Wandering a little wider for new matches.', adjustedTargetNew ? `Looking for ${adjustedTargetNew} new tracks that still fit.` : 'No extra discovery needed for this one.');
   log(`🔎 Finding ${adjustedTargetNew} new discoveries …`, 'info');
   const usedIds  = new Set([...historySet, ...liked.map(t => t.id)]);
   const newTracks = [];
@@ -1180,6 +1286,7 @@ async function generatePlaylist(log, opts = {}) {
       usedIds.add(t.id);
       consecutiveMisses = 0;
       log(`  ✨ ${t.artists[0].name} — ${t.name}`, 'dim');
+      trackProgress(targetLiked + newTracks.length, 'Wandering a little wider for new matches.', `Found ${newTracks.length} of ${adjustedTargetNew} new tracks so far.`);
     } else {
       consecutiveMisses++;
       if (seedIdx % liked.length === 0)
@@ -1196,19 +1303,24 @@ async function generatePlaylist(log, opts = {}) {
   if (!playlist.length) throw new Error('Could not find any tracks for this genre. Try a different genre or shorten your no-repeat window.');
 
   // Flow ordering
-  const flow = getFlowSettings();
   let featureMap = {};
   if (flow.curve === 'off') {
     shuffleArray(playlist);
+    requestProgress(1, 'Keeping the order loose and simple.', 'Energy curve is off, so the playlist stays in a natural shuffled order.');
   } else {
-    log(`🌊 Fetching audio features for flow ordering …`, 'info');
-    featureMap = await fetchAudioFeatures(playlist.map(t => t.id));
+    requestProgress(0, 'Checking tempo, key, and energy so the order feels natural.', `Fetching flow data for ${playlist.length} tracks.`);
+    log(`🌊 Fetching audio features from ReccoBeats for flow ordering …`, 'info');
+    featureMap = await fetchAudioFeatures(playlist.map(t => t.id), (done, total) => {
+      requestProgress(done, 'Checking tempo, key, and energy so the order feels natural.', `Flow request ${done} of ${total}.`);
+    });
     const fetched = Object.keys(featureMap).length;
     log(`  Got features for ${fetched} / ${playlist.length} tracks`, 'dim');
     if (fetched > 0) {
+      requestProgress(featureBatches + 1, 'Putting the tracks into a smoother sequence.', `Flow data came back for ${fetched} of ${playlist.length} tracks.`);
       playlist = orderByFlow(playlist, featureMap, flow);
       log(`  Ordered with curve: ${flow.curve}${flow.useKey ? ' · key compat' : ''}${flow.useTempo ? ' · tempo' : ''}`, 'dim');
     } else {
+      requestProgress(featureBatches + 1, 'Keeping the order loose and simple.', 'No flow data came back, so I left the order relaxed.');
       shuffleArray(playlist);
     }
   }
@@ -1217,10 +1329,12 @@ async function generatePlaylist(log, opts = {}) {
   let pid = getPlaylistId();
   const shouldReuse = pid && playlistReuse;
   if (shouldReuse) {
+    requestProgress(featureBatches + 2, 'Tidying up your existing playlist.', 'Clearing out the previous tracks first.');
     log('🗑  Clearing existing playlist …', 'info');
     const removed = await clearPlaylist(pid);
     log(`  Removed ${removed} old tracks`, 'dim');
   } else {
+    requestProgress(featureBatches + 2, 'Setting up a fresh playlist on Spotify.', 'Creating a new home for this batch.');
     log('📋 Creating new playlist …', 'info');
     const me   = await api.get('/me');
     const date = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -1233,14 +1347,17 @@ async function generatePlaylist(log, opts = {}) {
     log(`  Created "${newPl.name}"`, 'dim');
   }
 
+  requestProgress(featureBatches + 3, 'Sending the finished set over to Spotify.', `Uploading ${playlist.length} tracks now.`);
   await api.post(`/playlists/${pid}/tracks`, { uris: playlist.map(t => `spotify:track:${t.id}`) });
   log(`✅ Added ${playlist.length} tracks`, 'success');
 
   saveHistory(playlist);
   log('💾 History saved', 'dim');
 
+  requestProgress(featureBatches + 4, 'Giving it one last look.', 'Making sure everything landed where it should.');
   const check = await api.get(`/playlists/${pid}?fields=tracks(total),name`);
   log(`✓ "${check.name}" — ${check.tracks.total} tracks on Spotify`, 'success');
+  progress(100, 'Playlist is ready.', `"${check.name}" now has ${check.tracks.total} tracks.`);
 
   return { genre, label, playlist, playlistId: pid, featureMap };
 }
@@ -1262,29 +1379,67 @@ function el(tag, props = {}, ...kids) {
   return e;
 }
 
-// ── Render helpers ────────────────────────────────────────────────────────────
-function appendLogLine(containerId, msg, type) {
-  const c = document.getElementById(containerId);
-  if (!c) return;
-  c.append(el('div', { class: `log-line ${type}` }, msg));
-  c.scrollTop = c.scrollHeight;
+function updateGenerationProgressUI() {
+  const pctEl = document.getElementById('gen-progress-pct');
+  const labelEl = document.getElementById('gen-progress-label');
+  const noteEl = document.getElementById('gen-progress-note');
+  const fillEl = document.getElementById('gen-progress-fill');
+  if (!pctEl || !labelEl || !noteEl || !fillEl || !genProgress) return;
+  pctEl.textContent = `${genProgress.pct}%`;
+  labelEl.textContent = genProgress.action;
+  noteEl.textContent = genProgress.note || '';
+  fillEl.style.width = `${genProgress.pct}%`;
 }
 
-function makeLogDiv(id, lines) {
-  const d = el('div', { class: 'log', id });
-  for (const line of lines) d.append(el('div', { class: `log-line ${line.type}` }, line.msg));
-  requestAnimationFrame(() => { d.scrollTop = d.scrollHeight; });
-  return d;
+function setGenerationProgress(pct, action, note = '') {
+  genProgress = {
+    pct: Math.max(0, Math.min(100, Math.round(pct))),
+    action,
+    note,
+  };
+  updateGenerationProgressUI();
+}
+
+function updateSyncProgressUI() {
+  const pctEl = document.getElementById('sync-progress-pct');
+  const labelEl = document.getElementById('sync-progress-label');
+  const noteEl = document.getElementById('sync-progress-note');
+  const fillEl = document.getElementById('sync-progress-fill');
+  if (!pctEl || !labelEl || !noteEl || !fillEl || !syncProgress) return;
+  pctEl.textContent = `${syncProgress.pct}%`;
+  labelEl.textContent = syncProgress.action;
+  noteEl.textContent = syncProgress.note || '';
+  fillEl.style.width = `${syncProgress.pct}%`;
+}
+
+function setSyncProgress(pct, action, note = '') {
+  syncProgress = {
+    pct: Math.max(0, Math.min(100, Math.round(pct))),
+    action,
+    note,
+  };
+  updateSyncProgressUI();
 }
 
 // ── Render: header ────────────────────────────────────────────────────────────
 function renderHeader() {
   const isDark  = document.documentElement.dataset.theme === 'dark';
   const userName = localStorage.getItem(K.USER_NAME);
+  const navBtn = isLoggedIn()
+    ? el('button', {
+        class: 'btn-ghost btn-sm',
+        onClick: () => {
+          if (isBusy) return;
+          activeTab = activeTab === 'settings' ? 'main' : 'settings';
+          render();
+        },
+      }, activeTab === 'settings' ? '← Back' : 'Settings')
+    : null;
   return el('header', { class: 'header' },
     el('div', { class: 'logo' }, el('span', { class: 'logo-dot' }, '●'), ' Liked & Kindred'),
     el('div', { class: 'header-right' },
       userName ? el('span', { class: 'user-chip' }, userName) : null,
+      navBtn,
       el('button', { class: 'btn-ghost btn-sm', title: 'Toggle theme', onClick: toggleTheme },
         isDark ? '☀ Light' : '◑ Dark'),
       isLoggedIn()
@@ -1309,243 +1464,144 @@ function renderSetup() {
   );
 }
 
-// ── Render: sync tab ──────────────────────────────────────────────────────────
-function renderSyncTab() {
+// ── Render: library sync card ────────────────────────────────────────────────
+function renderLibrarySyncCard() {
   const mapData    = lsGet(K.ARTIST_MAP);
-  const genreIndex = mapData?.genreIndex || {};
   const lastSync   = mapData?.lastSync;
-  const topGenres  = Object.entries(genreIndex).sort((a, b) => b[1].length - a[1].length).slice(0, 24);
   const artCount   = Object.keys(mapData?.artists || {}).length;
 
   const statusEl = lastSync
-    ? el('span', { class: 'badge badge-ok' }, `Synced ${new Date(lastSync).toLocaleDateString()}`)
-    : el('span', { class: 'badge badge-warn' }, 'Not synced yet');
+    ? el('div', { class: 'card-count' }, `Synced ${new Date(lastSync).toLocaleDateString()}`)
+    : el('div', { class: 'card-count' }, 'Not synced yet');
 
-  const isSyncing = isBusy && activeTab === 'sync';
+  const isSyncing = isBusy;
   const syncBtn = el('button', { class: 'btn-primary', disabled: isBusy, onClick: async () => {
     if (isBusy) return;
-    isBusy = true; syncLog = []; render();
+    isBusy = true;
+    setSyncProgress(2, 'Taking a quick inventory of your library.', 'Starting with your liked songs.');
+    render();
     try {
-      await syncLibrary((msg, type = 'info') => {
-        syncLog.push({ msg, type });
-        appendLogLine('sync-log', msg, type);
-      });
+      await syncLibrary(() => {}, setSyncProgress);
       try {
         const me = await api.get('/me');
         localStorage.setItem(K.USER_NAME, me.display_name || me.id);
       } catch (_) {}
     } catch (e) {
-      syncLog.push({ msg: '✗ ' + e.message, type: 'error' });
-      appendLogLine('sync-log', '✗ ' + e.message, 'error');
+      alert('Library sync failed: ' + e.message);
     }
-    isBusy = false; render();
+    isBusy = false;
+    syncProgress = null;
+    render();
   }},
     isSyncing ? el('span', {}, el('span', { class: 'spinner' }), 'Syncing…') : 'Sync Library Now'
   );
 
-  return el('div', {},
-    el('div', { class: 'card' },
+  return el('div', { class: 'card' },
+    el('div', { class: 'card-head' },
       el('p', { class: 'card-title' }, 'Library Sync'),
-      el('p', { class: 'card-desc' },
-        'Scans your Liked Songs and followed artists to build a genre → artist map, stored in your browser. ' +
-        'Run once, then refresh periodically as your library grows.'
-      ),
-      el('div', { class: 'row' },
-        el('div', { class: 'row', style: 'gap:8px' },
-          statusEl,
-          artCount ? el('span', { class: 'sm' }, `${artCount} artists`) : null,
-        ),
-        syncBtn,
-      ),
-      syncLog.length ? makeLogDiv('sync-log', syncLog) : null,
+      statusEl,
     ),
-
-    topGenres.length ? el('div', { class: 'card' },
-      el('p', { class: 'card-title' }, `Genre Map — ${Object.keys(genreIndex).length} genres`),
-      el('div', { class: 'genre-grid' },
-        ...topGenres.map(([g, ids]) =>
-          el('div', { class: 'genre-chip' }, el('span', {}, g), el('span', { class: 'cnt' }, String(ids.length)))
-        )
-      )
+    el('p', { class: 'card-desc' },
+      'Scans your Liked Songs and followed artists to build a genre → artist map, stored in your browser. Run once, then refresh periodically as your library grows.'
+    ),
+    el('div', { class: 'row' },
+      syncBtn,
+    ),
+    isSyncing && syncProgress ? el('div', { class: 'gen-progress' },
+      el('div', { class: 'gen-progress-head' },
+        el('div', { class: 'gen-progress-label', id: 'sync-progress-label' }, syncProgress.action),
+        el('div', { class: 'gen-progress-pct', id: 'sync-progress-pct' }, `${syncProgress.pct}%`),
+      ),
+      el('div', { class: 'gen-progress-bar' },
+        el('div', {
+          class: 'gen-progress-fill',
+          id: 'sync-progress-fill',
+          style: `width:${syncProgress.pct}%`,
+        }),
+      ),
+      el('div', { class: 'gen-progress-note', id: 'sync-progress-note' }, syncProgress.note || ''),
     ) : null,
   );
 }
 
-// ── Render: generate tab ──────────────────────────────────────────────────────
-function renderGenerateTab() {
+// ── Generation UI helpers ────────────────────────────────────────────────────
+function startGenerate(opts = {}) {
   const mapData = lsGet(K.ARTIST_MAP);
-  const history = loadHistory();
-  const isGen   = isBusy && activeTab === 'generate';
+  if (isBusy || !mapData) return;
+  isBusy = true; lastResult = null;
+  setGenerationProgress(2, 'Getting the shape of this playlist together.', 'Just a moment while I line things up.');
+  render();
+  generatePlaylist(() => {}, opts, setGenerationProgress)
+    .then(r  => { lastResult = r; })
+    .catch(e => {
+      alert('Playlist generation failed: ' + e.message);
+    })
+    .finally(() => {
+      isBusy = false;
+      genProgress = null;
+      render();
+    });
+}
 
-  // Shared generate runner — accepts opts { genre?, label? }
-  function runGenerate(opts = {}) {
-    if (isBusy || !mapData) return;
-    isBusy = true; genLog = []; lastResult = null; render();
-    generatePlaylist((msg, type = 'info') => {
-      genLog.push({ msg, type });
-      appendLogLine('gen-log', msg, type);
-    }, opts)
-      .then(r  => { lastResult = r; })
-      .catch(e => {
-        genLog.push({ msg: '✗ ' + e.message, type: 'error' });
-        appendLogLine('gen-log', '✗ ' + e.message, 'error');
-      })
-      .finally(() => { isBusy = false; render(); });
-  }
-
-  // Auto-start if triggered from Explore tab
-  if (pendingGenerate) {
-    const opts = { ...pendingGenerate };
-    pendingGenerate = null;
-    lastGenOpts = opts;
-    genMode = 'input';
-    setTimeout(() => runGenerate(opts), 0);
-  }
-
-  const s   = getGenSettings();
-  const pid = getPlaylistId();
-  const descParts = [
-    `${s.totalTracks} tracks`,
-    `${Math.round(s.kindredPct * 100)}% new discoveries`,
-    `max ${s.perArtist}/artist`,
-    pid && s.playlistReuse ? 'reuse playlist' : 'create new playlist',
-    s.regionOnly ? 'region-only tracks' : null,
-  ].filter(Boolean);
-
-  // Context label shown while generating
-  const genContext = isGen && lastGenOpts
-    ? (lastGenOpts.label ? `Generating for ${lastGenOpts.label}…` : 'Generating random genre…')
-    : null;
-
-  let currentInp = null;
-
-  const genBtn = el('button', {
-    class: 'btn-primary',
-    disabled: isBusy || !mapData,
-    style: 'white-space:nowrap;flex-shrink:0',
-    onClick: () => {
-      if (genMode === 'input') {
-        const m = matchArtistOrGenre(currentInp?.value || '');
-        if (!m) { alert('No matching artist or genre found in your library.'); return; }
-        lastGenOpts = m;
-        runGenerate(m);
-      } else {
-        lastGenOpts = {};
-        runGenerate({});
-      }
-    },
-  }, isGen
-    ? el('span', {}, el('span', { class: 'spinner' }), 'Generating…')
-    : '▶ Generate Playlist'
-  );
-
-  // Random genre checkbox — disabled while busy so user can't switch mid-generation
-  const randomChk = el('input', { type: 'checkbox' });
-  randomChk.checked  = genMode === 'random';
-  randomChk.disabled = isBusy;
-  randomChk.addEventListener('change', () => {
-    genMode = randomChk.checked ? 'random' : 'input';
+function renderGenerationResult() {
+  if (!lastResult) return null;
+  const closeResult = () => {
+    lastResult = null;
     render();
-  });
+  };
 
-  // Text input — show current artist/genre label if known; disabled when random
-  const isRandom = genMode === 'random';
-  const matchLabel = el('p', { class: 'sm', style: 'margin-top:6px;min-height:18px' });
-  const inputValue = !isRandom && lastGenOpts?.label ? lastGenOpts.label : '';
-  const inp = el('input', { type: 'text',
-    placeholder: isRandom ? 'Random genre selected' : 'e.g. Bonobo, trip hop, Radiohead…',
-    value: inputValue,
-    style: 'flex:1',
-  });
-  inp.disabled = isRandom;
-  if (inputValue) {
-    matchLabel.textContent = lastGenOpts.genres
-      ? `→ ${lastGenOpts.genres.join(', ')}`
-      : lastGenOpts.genre ? `→ ${lastGenOpts.genre}` : '';
-    matchLabel.style.color = 'var(--accent)';
-  }
-  inp.addEventListener('input', () => {
-    const m = matchArtistOrGenre(inp.value);
-    if (!inp.value.trim()) { matchLabel.textContent = ''; return; }
-    matchLabel.textContent = m ? `→ ${m.genres ? m.genres.join(', ') : m.genre}` : 'No match in your library';
-    matchLabel.style.color = m ? 'var(--accent)' : 'var(--danger)';
-  });
-  currentInp = inp;
-
-  // Log toggle
-  let logVisible = isGen;
-  const logToggleBtn = el('button', { class: 'btn-ghost btn-sm', style: 'margin-top:10px' },
-    logVisible ? 'Hide log' : 'Show log');
-  const logWrap = el('div', { style: logVisible ? '' : 'display:none' },
-    genLog.length ? makeLogDiv('gen-log', genLog) : null,
-  );
-  logToggleBtn.addEventListener('click', () => {
-    logVisible = !logVisible;
-    logWrap.style.display = logVisible ? '' : 'none';
-    logToggleBtn.textContent = logVisible ? 'Hide log' : 'Show log';
-  });
-
-  return el('div', {},
-    el('div', { class: 'card' },
-      el('p', { class: 'card-title' }, 'Generate Playlist'),
-      el('p', { class: 'card-desc' },
-        'Finds liked songs matching a genre and discovers similar tracks from outside your library. ',
-        descParts.join(' · '), ' · ',
-        el('span', { style: 'color:var(--text2)' }, `${history.length} in history`),
-        '.'
-      ),
-      !mapData
-        ? el('p', { style: 'color:var(--danger);font-size:13px;margin-bottom:10px' },
-            '⚠ Sync your library first.')
-        : null,
-      el('div', { style: 'display:flex;gap:8px;align-items:center;margin-bottom:6px' },
-        inp,
-        genBtn,
-      ),
-      el('div', { style: 'display:flex;align-items:center;gap:6px' },
-        randomChk,
-        el('label', { style: 'font-size:13px;cursor:pointer', onClick: () => { randomChk.checked = !randomChk.checked; randomChk.dispatchEvent(new Event('change')); } }, 'Random genre'),
-      ),
-      matchLabel,
-    ),
-
-    lastResult ? el('div', { class: 'card' },
-      el('div', { style: 'display:flex;align-items:center;justify-content:space-between;margin-bottom:4px' },
-        el('p', { class: 'card-title', style: 'margin-bottom:0' }, `Result — ${lastResult.label || lastResult.genre}`),
+  return el('div', { class: 'card' },
+    el('div', { class: 'card-head', style: 'margin-bottom:4px' },
+      el('p', { class: 'card-title', style: 'margin-bottom:0' }, `Result — ${lastResult.label || lastResult.genre}`),
+      el('div', { class: 'row', style: 'gap:8px' },
         el('a', {
           href: `https://open.spotify.com/playlist/${lastResult.playlistId}`,
           target: '_blank',
           style: 'font-size:13px;font-weight:500;white-space:nowrap',
         }, 'Open in Spotify ↗'),
+        el('button', { class: 'btn-ghost btn-sm', onClick: closeResult }, 'Close'),
       ),
-      el('div', {},
-        ...lastResult.playlist.map((t, i) => {
-          const f = lastResult.featureMap?.[t.id];
-          let energyEl = null;
-          if (f) {
-            const pct   = Math.round(f.energy * 100);
-            const hue   = Math.round(160 - f.energy * 130);
-            const fill  = el('div', { class: 'track-energy-fill',
-              style: `width:${pct}%;background:hsl(${hue},65%,48%)` });
-            energyEl = el('div', { class: 'track-energy', title: `Energy ${pct}%  Valence ${Math.round(f.valence*100)}%  ${Math.round(f.tempo)} BPM` },
+    ),
+    el('div', {},
+      ...lastResult.playlist.map((t, i) => {
+        const f = lastResult.featureMap?.[t.id];
+        let flowEl = null;
+        if (f) {
+          const pct   = Math.round(f.energy * 100);
+          const hue   = Math.round(160 - f.energy * 130);
+          const keyLabel = musicalKeyLabel(f);
+          const camelot = camelotLabel(f);
+          const fill  = el('div', { class: 'track-energy-fill',
+            style: `width:${pct}%;background:hsl(${hue},65%,48%)` });
+          flowEl = el('div', {
+            class: 'track-flow',
+            title: [
+              Number.isFinite(f.tempo) ? `Tempo ${Math.round(f.tempo)} BPM` : null,
+              keyLabel ? `Key ${keyLabel}` : null,
+              camelot ? `Camelot ${camelot}` : null,
+              `Energy ${pct}%`,
+            ].filter(Boolean).join('  '),
+          },
+            Number.isFinite(f.tempo) ? el('div', { class: 'track-flow-line' }, `Tempo ${Math.round(f.tempo)} BPM`) : null,
+            keyLabel ? el('div', { class: 'track-flow-line' }, `Key ${keyLabel}`) : null,
+            camelot ? el('div', { class: 'track-flow-line' }, `Camelot ${camelot}`) : null,
+            el('div', { class: 'track-energy' },
               el('div', { class: 'track-energy-bar' }, fill),
               el('span', { class: 'track-energy-label' }, `${pct}%`),
-            );
-          }
-          return el('div', { class: 'track-item' },
-            el('span', { class: 'track-num' }, String(i + 1)),
-            el('span', { class: 'track-sym' }, t._type === 'liked' ? '♥' : '✨'),
-            el('div', { class: 'track-info' },
-              el('div', { class: 'track-name'   }, t.name),
-              el('div', { class: 'track-artist' }, t.artists[0]?.name || ''),
             ),
-            energyEl,
           );
-        })
-      ),
-      genLog.length ? el('div', { style: 'margin-top:12px;border-top:1px solid var(--border);padding-top:10px' },
-        logToggleBtn, logWrap) : null,
-    ) : null,
+        }
+        return el('div', { class: 'track-item' },
+          el('span', { class: 'track-num' }, String(i + 1)),
+          el('span', { class: 'track-sym' }, t._type === 'liked' ? '♥' : '✨'),
+          el('div', { class: 'track-info' },
+            el('div', { class: 'track-name'   }, t.name),
+            el('div', { class: 'track-artist' }, t.artists[0]?.name || ''),
+          ),
+          flowEl,
+        );
+      })
+    ),
   );
 }
 
@@ -1555,31 +1611,6 @@ function renderSettingsTab() {
   const mapData = lsGet(K.ARTIST_MAP);
   const history = loadHistory();
   const s = getGenSettings();
-  const artCount = Object.keys(mapData?.artists || {}).length;
-  const statusEl = mapData?.lastSync
-    ? el('span', { class: 'badge badge-ok' }, `Synced ${new Date(mapData.lastSync).toLocaleDateString()}`)
-    : el('span', { class: 'badge badge-warn' }, 'Not synced yet');
-  const isSyncing = isBusy;
-  const syncBtn = el('button', { class: 'btn-primary', disabled: isBusy, onClick: async () => {
-    if (isBusy) return;
-    isBusy = true; syncLog = []; render();
-    try {
-      await syncLibrary((msg, type = 'info') => {
-        syncLog.push({ msg, type });
-        appendLogLine('settings-sync-log', msg, type);
-      });
-      try {
-        const me = await api.get('/me');
-        localStorage.setItem(K.USER_NAME, me.display_name || me.id);
-      } catch (_) {}
-    } catch (e) {
-      syncLog.push({ msg: '✗ ' + e.message, type: 'error' });
-      appendLogLine('settings-sync-log', '✗ ' + e.message, 'error');
-    }
-    isBusy = false; render();
-  }},
-    isSyncing ? el('span', {}, el('span', { class: 'spinner' }), 'Syncing…') : 'Sync Library Now'
-  );
 
   // Kindred % slider
   const kindredValEl = el('span', { class: 'slider-val' }, `${Math.round(s.kindredPct * 100)}%`);
@@ -1593,11 +1624,11 @@ function renderSettingsTab() {
 
   // perArtistInp declared first so tracksInp's handler can reference it
   const initMaxPerArtist = Math.max(1, Math.floor(s.totalTracks / 2));
-  const perArtistInp = el('input', { type: 'number', class: 'setting-num', min: '1',
+  const perArtistInp = el('input', { type: 'text', inputmode: 'numeric', class: 'setting-num', min: '1',
     max: String(initMaxPerArtist), value: String(Math.min(s.perArtist, initMaxPerArtist)) });
   perArtistInp.addEventListener('input', () => localStorage.setItem(K.PER_ARTIST, perArtistInp.value.trim()));
 
-  const tracksInp = el('input', { type: 'number', class: 'setting-num', min: '5', max: '100', value: String(s.totalTracks) });
+  const tracksInp = el('input', { type: 'text', inputmode: 'numeric', class: 'setting-num', min: '5', max: '100', value: String(s.totalTracks) });
   tracksInp.addEventListener('input', () => {
     const total = Math.max(5, parseInt(tracksInp.value) || 5);
     const newMax = Math.max(1, Math.floor(total / 2));
@@ -1607,7 +1638,7 @@ function renderSettingsTab() {
     localStorage.setItem(K.PER_ARTIST, perArtistInp.value.trim());
   });
 
-  const histDaysInp = el('input', { type: 'number', class: 'setting-num', min: '1', max: '365', value: String(s.histDays) });
+  const histDaysInp = el('input', { type: 'text', inputmode: 'numeric', class: 'setting-num', min: '1', max: '365', value: String(s.histDays) });
   histDaysInp.addEventListener('input', () => localStorage.setItem(K.HIST_DAYS, histDaysInp.value.trim()));
 
   function makeRadio(name, val, checked, label) {
@@ -1640,20 +1671,7 @@ function renderSettingsTab() {
     }}, 'Save'),
   );
 
-  const syncCard = el('div', { class: 'card' },
-    el('p', { class: 'card-title' }, 'Library Sync'),
-    el('p', { class: 'card-desc' },
-      'Scans your Liked Songs and followed artists to build a genre → artist map, stored in your browser. Run once, then refresh periodically as your library grows.'
-    ),
-    el('div', { class: 'row' },
-      el('div', { class: 'row', style: 'gap:8px' },
-        statusEl,
-        artCount ? el('span', { class: 'sm' }, `${artCount} artists`) : null,
-      ),
-      syncBtn,
-    ),
-    syncLog.length ? makeLogDiv('settings-sync-log', syncLog) : null,
-  );
+  const syncCard = renderLibrarySyncCard();
 
   const generationCard = el('div', { class: 'card' },
     el('p', { class: 'section-label' }, 'Playlist Generation'),
@@ -1710,8 +1728,7 @@ function renderSettingsTab() {
       el('div', { class: 'radio-row', style: 'margin-top:8px' }, reuseRadio, createRadio),
     ),
 
-    el('div', { class: 'divider' }),
-    el('p', { class: 'section-label' }, 'Flow & Ordering'),
+    el('p', { class: 'section-label', style: 'margin-top:20px' }, 'Flow & Ordering'),
 
     el('div', { class: 'setting-row', style: 'display:block;padding:12px 0' },
       el('div', {},
@@ -1813,12 +1830,13 @@ function chipStyle(genre) {
 function renderExploreTab() {
   const mapData = lsGet(K.ARTIST_MAP);
   if (!mapData) {
-    return el('div', { class: 'card' },
-      el('p', { class: 'card-desc', style: 'color:var(--danger)' },
-        '⚠ No data yet — go to Sync Library to build your genre map first.')
+    return el('div', {},
+      renderLibrarySyncCard()
     );
   }
 
+  const history = loadHistory();
+  const s = getGenSettings();
   const { artists, genreIndex } = mapData;
   const sortedGenres  = Object.entries(genreIndex).sort((a, b) => b[1].length - a[1].length);
   const sortedArtists = Object.values(artists).sort((a, b) => a.name.localeCompare(b.name));
@@ -1832,11 +1850,40 @@ function renderExploreTab() {
   }
 
   // Mutable filter state — lives inside this function, no full re-render needed
-  let selGenre = null;
+  const selectedGenres = new Set();
+  let selectedArtist = null;
 
-  const cloudEl      = el('div', { class: 'genre-cloud' });
-  const artistListEl = el('div', {});
-  const countLabelEl = el('div', { class: 'sm', style: 'margin-bottom:12px;font-weight:600' });
+  const descParts = [
+    `${s.totalTracks} tracks`,
+    `${Math.round(s.kindredPct * 100)}% new discoveries`,
+    `max ${s.perArtist}/artist`,
+    history.length ? `${history.length} in history` : null,
+  ].filter(Boolean);
+
+  const cloudEl         = el('div', { class: 'genre-cloud' });
+  const artistListEl    = el('div', {});
+  const artistCountEl   = el('div', { class: 'card-count' });
+  const genreCountEl    = el('div', { class: 'card-count' }, `${sortedGenres.length} genres`);
+  const pillRowEl       = el('div', { class: 'genre-pill-row' });
+  const generateHintEl  = el('p', { class: 'sm', style: 'margin-bottom:12px' });
+  const generateBtn = el('button', {
+    class: 'btn-primary',
+    disabled: true,
+    style: 'white-space:nowrap;flex-shrink:0',
+    onClick: () => {
+      const genres = [...selectedGenres];
+      if (!genres.length || isBusy) return;
+      startGenerate({
+        genre: genres[0],
+        genres,
+        label: selectedArtist ? selectedArtist.name : genres.join(' + '),
+        seedArtistName: selectedArtist?.name,
+      });
+    },
+  }, isBusy
+    ? el('span', {}, el('span', { class: 'spinner' }), 'Generating…')
+    : '▶ Generate Playlist'
+  );
 
   // Build genre tag cloud
   const tagEls = {};
@@ -1846,35 +1893,54 @@ function renderExploreTab() {
       style: `font-size:${tagSize(ids.length)}px`,
       'data-g': genre,
     }, genre + '\u202f', el('sup', {}, String(ids.length)));
-    tag.addEventListener('click', () => selectGenre(genre === selGenre ? null : genre));
+    tag.addEventListener('click', () => toggleGenre(genre));
     tagEls[genre] = tag;
     cloudEl.append(tag);
   }
 
-  // Genre "Generate" bar (shown when a genre is selected in the cloud)
-  const genreActionBar = el('div', { class: 'genre-gen-bar', style: 'display:none' });
-  const genreActionLabel = el('span', { class: 'genre-gen-label' });
-  const genreActionBtn   = el('button', { class: 'btn-primary btn-sm' }, '▶ Generate playlist');
-  genreActionBar.append(genreActionLabel, genreActionBtn);
-
-  function launchGenerate(opts) {
-    pendingGenerate = opts;
-    genMode = 'random'; // will be overridden by pendingGenerate
-    activeTab = 'generate';
-    render();
+  function syncGenreTags() {
+    for (const [g, t] of Object.entries(tagEls)) t.classList.toggle('active', selectedGenres.has(g));
   }
 
-  function selectGenre(genre) {
-    selGenre = genre;
-    for (const [g, t] of Object.entries(tagEls)) t.classList.toggle('active', g === genre);
-
-    if (genre) {
-      genreActionLabel.innerHTML = `Generate playlist for <strong>${genre}</strong>`;
-      genreActionBar.style.display = 'flex';
-      genreActionBtn.onclick = () => launchGenerate({ genre, label: genre });
-    } else {
-      genreActionBar.style.display = 'none';
+  function updateGenerateCard() {
+    const genres = [...selectedGenres];
+    pillRowEl.innerHTML = '';
+    if (selectedArtist) {
+      const removeArtistBtn = el('button', { type: 'button', title: `Remove artist seed ${selectedArtist.name}` }, '×');
+      removeArtistBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectedArtist = null;
+        updateGenerateCard();
+      });
+      pillRowEl.append(el('div', { class: 'genre-pill' }, `Artist: ${selectedArtist.name}`, removeArtistBtn));
     }
+
+    if (!genres.length) {
+      pillRowEl.append(el('div', { class: 'genre-pill-empty' }, 'Select one or more genres from the cloud below.'));
+      generateHintEl.textContent = selectedArtist
+        ? 'Add one or more genres for this artist seed before generating.'
+        : 'Selected genres drive both the artist filter and the playlist generation pool.';
+      generateBtn.disabled = true;
+      return;
+    }
+
+    for (const genre of genres) {
+      const removeBtn = el('button', { type: 'button', title: `Remove ${genre}` }, '×');
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleGenre(genre);
+      });
+      pillRowEl.append(el('div', { class: 'genre-pill', style: chipStyle(genre) }, genre, removeBtn));
+    }
+    generateHintEl.textContent = `${selectedArtist ? `Seeded from ${selectedArtist.name} · ` : ''}${genres.length} selected genre${genres.length === 1 ? '' : 's'} · ${descParts.join(' · ')}`;
+    generateBtn.disabled = isBusy || !mapData;
+  }
+
+  function toggleGenre(genre) {
+    if (selectedGenres.has(genre)) selectedGenres.delete(genre);
+    else selectedGenres.add(genre);
+    syncGenreTags();
+    updateGenerateCard();
     updateList();
   }
 
@@ -1882,9 +1948,9 @@ function renderExploreTab() {
     const q = searchInp.value.trim().toLowerCase();
     let filtered = sortedArtists;
 
-    if (selGenre) {
-      const ids = new Set(genreIndex[selGenre] || []);
-      filtered  = filtered.filter(a => ids.has(a.id));
+    if (selectedGenres.size) {
+      const required = [...selectedGenres];
+      filtered = filtered.filter(a => required.every(g => a.genres.includes(g)));
     }
     if (q) {
       filtered = filtered.filter(a =>
@@ -1893,31 +1959,35 @@ function renderExploreTab() {
       );
     }
 
-    countLabelEl.textContent = `${filtered.length} artist${filtered.length !== 1 ? 's' : ''}`;
+    artistCountEl.textContent = `${filtered.length} artist${filtered.length !== 1 ? 's' : ''}`;
     artistListEl.innerHTML = '';
     for (const a of filtered) {
       const genreEl = el('div', { class: 'artist-genres' },
         ...a.genres.map(g => {
           const chip = el('span', { class: 'a-chip', style: chipStyle(g) }, g);
-          chip.addEventListener('click', () => selectGenre(g === selGenre ? null : g));
+          chip.addEventListener('click', () => toggleGenre(g));
           return chip;
         })
       );
 
       // Determine a genre to use when generating for this artist.
-      // If the artist has no genre data, fall back to random genre selection.
+      // If the artist has no genre data, fall back to a genre-less artist seed.
       const artistGenres = a.genres.filter(g => genreIndex[g]);
       const artistGenre  = artistGenres[0] || null;
       const genBtn = el('button', { class: 'btn-gen' }, '▶');
       genBtn.title = artistGenre
-        ? `Generate playlist for ${a.name} (${artistGenres.join(', ')})`
-        : `Generate playlist (no genre data for ${a.name} — will pick random genre)`;
+        ? `Seed from ${a.name} and add ${artistGenres.join(', ')}`
+        : `No mapped genres available for ${a.name}`;
       genBtn.style.opacity = artistGenre ? '1' : '0.5';
-      genBtn.addEventListener('click', () => launchGenerate(
-        artistGenre
-          ? { genre: artistGenre, genres: artistGenres, label: a.name, seedArtistName: a.name }
-          : { label: a.name, seedArtistName: a.name }
-      ));
+      genBtn.disabled = !artistGenres.length;
+      genBtn.addEventListener('click', () => {
+        if (!artistGenres.length) return;
+        selectedArtist = { name: a.name };
+        for (const genre of artistGenres) selectedGenres.add(genre);
+        syncGenreTags();
+        updateGenerateCard();
+        updateList();
+      });
 
       artistListEl.append(el('div', { class: 'artist-row' },
         el('span', { class: 'artist-name' }, a.name),
@@ -1931,37 +2001,52 @@ function renderExploreTab() {
   searchInp.addEventListener('input', updateList);
 
   // Initial render
+  updateGenerateCard();
   updateList();
 
-  // Stats
-  const totalG = sortedGenres.length;
-  const totalA = sortedArtists.length;
-  const [topG, topIds] = sortedGenres[0] || ['—', []];
-
   return el('div', {},
-    el('div', { class: 'stats-row' },
-      el('div', { class: 'stat-card' },
-        el('div', { class: 'stat-label' }, 'unique genres'),
-        el('div', { class: 'stat-value' }, String(totalG)),
+    el('div', { class: 'card' },
+      el('div', { class: 'card-head' },
+        el('p', { class: 'card-title' }, 'Generate Playlist'),
       ),
-      el('div', { class: 'stat-card' },
-        el('div', { class: 'stat-label' }, 'artists mapped'),
-        el('div', { class: 'stat-value' }, String(totalA)),
+      el('p', { class: 'card-desc' },
+        'Build a playlist from the genres you select below. The same selection also filters the artist list.'
       ),
-      el('div', { class: 'stat-card' },
-        el('div', { class: 'stat-label' }, 'top genre'),
-        el('div', { class: 'stat-value sm-val' }, `${topG} (${topIds.length})`),
-      ),
+      pillRowEl,
+      generateHintEl,
+      isBusy && genProgress ? el('div', { class: 'gen-progress' },
+        el('div', { class: 'gen-progress-head' },
+          el('div', { class: 'gen-progress-label', id: 'gen-progress-label' }, genProgress.action),
+          el('div', { class: 'gen-progress-pct', id: 'gen-progress-pct' }, `${genProgress.pct}%`),
+        ),
+        el('div', { class: 'gen-progress-bar' },
+          el('div', {
+            class: 'gen-progress-fill',
+            id: 'gen-progress-fill',
+            style: `width:${genProgress.pct}%`,
+          }),
+        ),
+        el('div', { class: 'gen-progress-note', id: 'gen-progress-note' }, genProgress.note || ''),
+      ) : null,
+      el('div', { class: 'row gen-actions' }, generateBtn),
     ),
 
-    searchInp,
+    renderGenerationResult(),
 
-    el('p', { class: 'sm', style: 'margin:12px 0 6px;color:var(--text2)' }, 'click a genre to filter · click ▶ on an artist to generate'),
-    el('div', { class: 'card' }, cloudEl),
-    genreActionBar,
+    el('div', { class: 'card' },
+      el('div', { class: 'card-head' },
+        el('p', { class: 'card-title' }, 'Genres'),
+        genreCountEl,
+      ),
+      cloudEl,
+    ),
 
     el('div', { class: 'card', style: 'margin-top:8px' },
-      countLabelEl,
+      el('div', { class: 'card-head' },
+        el('p', { class: 'card-title' }, 'Artists'),
+        artistCountEl,
+      ),
+      searchInp,
       artistListEl,
     ),
   );
@@ -1969,25 +2054,9 @@ function renderExploreTab() {
 
 // ── Render: main app ──────────────────────────────────────────────────────────
 function renderApp() {
-  const TABS = [
-    { id: 'generate', label: 'Generate Playlist' },
-    { id: 'explore',  label: 'Explore'           },
-    { id: 'settings', label: 'Settings'          },
-  ];
-
-  let tabContent;
-  if      (activeTab === 'generate') tabContent = renderGenerateTab();
-  else if (activeTab === 'explore')  tabContent = renderExploreTab();
-  else                               tabContent = renderSettingsTab();
-
+  if (!['main', 'settings'].includes(activeTab)) activeTab = 'main';
   return el('div', { class: 'main' },
-    el('div', { class: 'tabs' },
-      ...TABS.map(t => el('button', {
-        class: `tab${activeTab === t.id ? ' active' : ''}`,
-        onClick: () => { if (!isBusy) { activeTab = t.id; render(); } },
-      }, t.label))
-    ),
-    tabContent,
+    activeTab === 'settings' ? renderSettingsTab() : renderExploreTab(),
   );
 }
 
